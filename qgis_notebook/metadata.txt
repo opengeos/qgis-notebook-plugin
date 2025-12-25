@@ -1,0 +1,44 @@
+[general]
+name=QGIS Notebook
+qgisMinimumVersion=3.28
+description=Render and run Jupyter notebooks within QGIS in a dockable panel.
+version=0.1.0
+author=Qiusheng Wu
+email=giswqs@gmail.com
+
+about=QGIS Notebook allows you to open, render, and execute Jupyter notebooks directly within QGIS.
+
+    Features:
+    - Open and render Jupyter notebook (.ipynb) files
+    - Execute notebook cells with Python kernel
+    - View markdown and code cell outputs
+    - Dockable panel that can be positioned anywhere in the QGIS interface
+    - Syntax highlighting for code cells
+    - Support for notebook outputs including text, images, and HTML
+    - Integration with QGIS Python environment
+    - Auto-save and export functionality
+
+    Use this plugin to work with Jupyter notebooks without leaving QGIS.
+
+tracker=https://github.com/opengeos/qgis-notebook-plugin/issues
+repository=https://github.com/opengeos/qgis-notebook-plugin
+
+hasProcessingProvider=no
+
+tags=jupyter, notebook, python, interactive, dockable, analysis
+
+homepage=https://github.com/opengeos/qgis-notebook-plugin
+category=Plugins
+icon=icons/icon.svg
+
+experimental=False
+deprecated=False
+
+changelog=
+    0.1.0 - Initial release
+        - Basic notebook rendering and execution
+        - Dockable panel interface
+        - Settings panel for configuration
+        - Update checker functionality
+
+
