@@ -1,2 +1,282 @@
-# qgis-notebook-plugin
-A QGIS plugin for running Jupyter Notebook within QGIS
+# QGIS Notebook Plugin
+
+A QGIS plugin for rendering and running Jupyter notebooks directly within QGIS. The plugin provides a dockable panel interface for interactive notebook execution.
+
+![QGIS Notebook](https://img.shields.io/badge/QGIS-3.28+-green.svg)
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
+
+## Features
+
+- **📂 Open Notebooks**: Load and render Jupyter notebook (.ipynb) files
+- **▶️ Execute Cells**: Run Python code cells with syntax highlighting
+- **📝 Markdown Support**: Render markdown cells with headers, lists, links, and formatting
+- **🎨 Syntax Highlighting**: Beautiful Python syntax highlighting for code cells
+- **📊 Rich Output**: View text, errors, and execution results
+- **🔄 QGIS Integration**: Access QGIS layers, projects, and Python environment
+- **💾 Save Notebooks**: Save changes back to notebook files
+- **📄 Create New**: Start fresh notebooks from within QGIS
+- **⚙️ Customizable**: Configure appearance, fonts, and execution settings
+- **🔄 Auto-Update**: Check for and install updates from GitHub
+
+## Screenshots
+
+The plugin provides a clean, dark-themed interface that integrates seamlessly with QGIS:
+
+- **Notebook Panel**: Dockable panel for viewing and executing notebooks
+- **Settings Panel**: Configure plugin behavior and appearance
+- **Update Checker**: Keep the plugin up-to-date
+
+## Installation
+
+### From QGIS Plugin Manager (Recommended)
+
+1. Open QGIS
+2. Go to **Plugins** → **Manage and Install Plugins...**
+3. Search for "QGIS Notebook"
+4. Click **Install**
+
+### Using Installation Scripts
+
+#### Python Script (Cross-platform)
+
+```bash
+# Install the plugin
+python install.py
+
+# Remove the plugin
+python install.py --remove
+
+# Install with custom plugin directory
+python install.py --plugin-dir /custom/path/to/plugins
+```
+
+#### Shell Script (Linux/macOS)
+
+```bash
+# Install the plugin
+./install.sh
+
+# Remove the plugin
+./install.sh --remove
+
+# Show help
+./install.sh --help
+```
+
+### Manual Installation
+
+1. Download the latest release from [GitHub Releases](https://github.com/opengeos/qgis-notebook-plugin/releases)
+2. Extract the zip file
+3. Copy the `qgis_notebook` folder to your QGIS plugins directory:
+   - **Linux**: `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/`
+   - **Windows**: `%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\`
+   - **macOS**: `~/Library/Application Support/QGIS/QGIS3/profiles/default/python/plugins/`
+4. Restart QGIS
+5. Enable the plugin in **Plugins** → **Manage and Install Plugins...**
+
+## Usage
+
+### Opening a Notebook
+
+1. Click the **📂 Open** button in the toolbar
+2. Navigate to and select a `.ipynb` file
+3. The notebook will be rendered in the panel
+
+### Running Code Cells
+
+1. Click the **▶ Run** button on any code cell to execute it
+2. Use **▶▶ Run All** to execute all cells in order
+3. View output directly below each cell
+
+### Creating a New Notebook
+
+1. Click the **📄 New** button
+2. Start adding code and markdown cells
+3. Save with **💾 Save**
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Click **▶ Run** | Execute current cell |
+| Click **▶▶ Run All** | Execute all cells |
+| Click **🗑 Clear Outputs** | Clear all cell outputs |
+
+## Configuration
+
+Access settings via the **Settings** button in the toolbar:
+
+### General Settings
+- Auto-save notebooks
+- Show line numbers
+- Word wrap in cells
+
+### Execution Settings
+- Execution timeout
+- Clear outputs before run
+- Stop on error
+- Pre-import modules (QGIS, os, sys, numpy, pandas)
+
+### Appearance Settings
+- Color scheme
+- Code font family
+- Font size
+- Line height
+- Cell spacing
+
+## QGIS Integration
+
+The plugin automatically imports QGIS modules, making it easy to work with your project:
+
+```python
+# Access the current project
+from qgis.core import QgsProject
+project = QgsProject.instance()
+
+# List all layers
+for layer in project.mapLayers().values():
+    print(layer.name())
+
+# Access the map canvas
+from qgis.utils import iface
+canvas = iface.mapCanvas()
+```
+
+## Requirements
+
+- QGIS 3.28 or later
+- Python 3.9 or later (included with QGIS)
+
+## Update Checker
+
+The plugin includes a built-in update checker that can:
+- Check for new versions from GitHub
+- Display changelog information
+- Download and install updates automatically
+
+Access it via **QGIS Notebook** → **Check for Updates...**
+
+## About Dialog
+
+The About dialog displays:
+- Current plugin version
+- Author information
+- Feature list
+- Links to GitHub repository and issue tracker
+
+Access it via **QGIS Notebook** → **About QGIS Notebook**
+
+## Development
+
+### Packaging for Distribution
+
+#### Python Script
+
+```bash
+# Create a zip file for distribution
+python package_plugin.py
+
+# Create without version in filename
+python package_plugin.py --no-version
+
+# Custom output path
+python package_plugin.py --output /path/to/output.zip
+```
+
+#### Shell Script
+
+```bash
+# Create a zip file for distribution
+./package_plugin.sh
+
+# Create without version in filename
+./package_plugin.sh --no-version
+
+# Show help
+./package_plugin.sh --help
+```
+
+The packaged zip file can be uploaded to the [QGIS Plugin Repository](https://plugins.qgis.org/).
+
+### Project Structure
+
+```
+qgis-notebook-plugin/
+├── install.py                # Cross-platform installation script
+├── install.sh                # Shell installation script (Linux/macOS)
+├── package_plugin.py         # Cross-platform packaging script
+├── package_plugin.sh         # Shell packaging script (Linux/macOS)
+├── README.md                 # This file
+├── LICENSE                   # MIT License
+└── qgis_notebook/            # Main plugin directory
+    ├── __init__.py           # Plugin entry point
+    ├── qgis_notebook.py      # Main plugin class
+    ├── metadata.txt          # Plugin metadata
+    ├── LICENSE               # Plugin license
+    ├── dialogs/
+    │   ├── __init__.py
+    │   ├── notebook_dock.py  # Main notebook dock widget
+    │   ├── settings_dock.py  # Settings panel
+    │   └── update_checker.py # Update checker dialog
+    └── icons/
+        ├── icon.svg          # Main plugin icon
+        ├── settings.svg      # Settings icon
+        └── about.svg         # About icon
+```
+
+### Building
+
+To package the plugin for distribution, use the provided scripts:
+
+```bash
+cd qgis-notebook-plugin
+
+# Using Python (cross-platform)
+python package_plugin.py
+
+# Using shell script (Linux/macOS)
+./package_plugin.sh
+
+# Or manually
+zip -r qgis_notebook.zip qgis_notebook/
+```
+
+The output will be a file like `qgis_notebook-0.1.0.zip` ready for distribution.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Author
+
+**Qiusheng Wu**
+
+- GitHub: [@giswqs](https://github.com/giswqs)
+- Website: [https://wetlands.io](https://wetlands.io)
+
+## Acknowledgments
+
+- Built with the [QGIS Plugin Template](https://github.com/opengeos/qgis-plugin-template)
+- Inspired by Jupyter Notebook and JupyterLab
+- Thanks to the QGIS community for their excellent documentation
+
+## Changelog
+
+### 0.1.0 (Initial Release)
+- Basic notebook rendering and execution
+- Dockable panel interface
+- Python syntax highlighting
+- Markdown cell rendering
+- Settings panel for configuration
+- Update checker functionality
+- QGIS module integration
