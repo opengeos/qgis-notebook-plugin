@@ -1122,8 +1122,8 @@ class NotebookDockWidget(QDockWidget):
         )
 
         if reply == QMessageBox.Save:
-            self._save_notebook()
-            return True
+            saved = self._save_notebook()
+            return bool(saved)
         elif reply == QMessageBox.Discard:
             return True
         else:  # Cancel
