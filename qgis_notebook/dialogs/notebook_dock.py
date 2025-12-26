@@ -691,6 +691,7 @@ class NotebookCellWidget(QFrame):
 
         # Set initial height based on content (dynamic height handled by CodeEditor)
         line_count = max(1, min(20, source.count("\n") + 1))
+        # 22 is the approximate line height in pixels; 16 adds vertical padding/margins
         initial_height = line_count * 22 + 16
         self.source_edit.setMinimumHeight(initial_height)
         self.source_edit.setMaximumHeight(initial_height)
