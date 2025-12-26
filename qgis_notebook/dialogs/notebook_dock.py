@@ -815,9 +815,24 @@ class NotebookCellWidget(QFrame):
             return "<i style='color:#6E7274;'>Double-click to edit markdown...</i>"
 
         # Headers - use margin:0 to avoid extra spacing
-        text = re.sub(r"^######\s+(.+)$", r"<h6 style='margin:0.3em 0;'>\1</h6>", text, flags=re.MULTILINE)
-        text = re.sub(r"^#####\s+(.+)$", r"<h5 style='margin:0.3em 0;'>\1</h5>", text, flags=re.MULTILINE)
-        text = re.sub(r"^####\s+(.+)$", r"<h4 style='margin:0.3em 0;'>\1</h4>", text, flags=re.MULTILINE)
+        text = re.sub(
+            r"^######\s+(.+)$",
+            r"<h6 style='margin:0.3em 0;'>\1</h6>",
+            text,
+            flags=re.MULTILINE,
+        )
+        text = re.sub(
+            r"^#####\s+(.+)$",
+            r"<h5 style='margin:0.3em 0;'>\1</h5>",
+            text,
+            flags=re.MULTILINE,
+        )
+        text = re.sub(
+            r"^####\s+(.+)$",
+            r"<h4 style='margin:0.3em 0;'>\1</h4>",
+            text,
+            flags=re.MULTILINE,
+        )
         text = re.sub(
             r"^###\s+(.+)$",
             r"<h3 style='color:#E8BF6A;margin:0.3em 0;'>\1</h3>",
@@ -861,7 +876,7 @@ class NotebookCellWidget(QFrame):
 
         # Remove newlines after closing heading tags (they add extra space)
         text = re.sub(r"(</h[1-6]>)\n+", r"\1", text)
-        
+
         # Convert remaining line breaks
         text = text.replace("\n\n", "<br>")
         text = text.replace("\n", "<br>")
@@ -917,12 +932,12 @@ class NotebookCellWidget(QFrame):
         """Set the output of the cell after execution."""
         # Clear previous output first
         self.output_area.clear()
-        
+
         output_parts = []
 
         if stdout:
             # Strip trailing newline to avoid extra blank line
-            output_parts.append(stdout.rstrip('\n'))
+            output_parts.append(stdout.rstrip("\n"))
 
         if result is not None:
             output_parts.append(f"<span style='color:#A9B7C6;'>{repr(result)}</span>")
