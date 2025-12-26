@@ -26,18 +26,46 @@ The plugin provides a clean, dark-themed interface that integrates seamlessly wi
 - **Settings Panel**: Configure plugin behavior and appearance
 - **Update Checker**: Keep the plugin up-to-date
 
+### Notebook Panel
+
+![](https://github.com/user-attachments/assets/104b8a54-d693-40e8-b4fd-fa8d69b0c655)
+
+### Settings Panel
+
+![](https://github.com/user-attachments/assets/a812876d-0f2a-4d84-8ac6-6764f38abf77)
+
+### Update Checker
+
+![](https://github.com/user-attachments/assets/9addca25-c9b0-49f6-b19a-4d4aaf92d5fa)
+
+
 ## Installation
 
 ### From QGIS Plugin Manager (Recommended)
 
 1. Open QGIS
 2. Go to **Plugins** → **Manage and Install Plugins...**
-3. Search for "QGIS Notebook"
-4. Click **Install**
+3. Go to the **Settings** tab
+4. Click **Add...** under "Plugin Repositories"
+5. Give a name for the repository, e.g., "OpenGeos"
+6. Enter the URL of the repository: https://qgis.gishub.org/plugins.xml
+7. Click **OK**
+8. Go to the **All** tab
+9. Search for "Notebook"
+10. Select "Notebook" from the list and click **Install Plugin**
 
 ### Using Installation Scripts
 
 #### Python Script (Cross-platform)
+
+Clone the repository:
+
+```bash
+git clone https://github.com/opengeos/qgis-notebook-plugin.git
+cd qgis-notebook-plugin
+```
+
+Install the plugin:
 
 ```bash
 # Install the plugin
@@ -45,9 +73,6 @@ python install.py
 
 # Remove the plugin
 python install.py --remove
-
-# Install with custom plugin directory
-python install.py --plugin-dir /custom/path/to/plugins
 ```
 
 #### Shell Script (Linux/macOS)
@@ -65,7 +90,7 @@ python install.py --plugin-dir /custom/path/to/plugins
 
 ### Manual Installation
 
-1. Download the latest release from [GitHub Releases](https://github.com/opengeos/qgis-notebook-plugin/releases)
+1. Download the latest release from <https://qgis.gishub.org>.
 2. Extract the zip file
 3. Copy the `qgis_notebook` folder to your QGIS plugins directory:
    - **Linux**: `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/`
@@ -145,7 +170,7 @@ canvas = iface.mapCanvas()
 ## Requirements
 
 - QGIS 3.28 or later
-- Python 3.9 or later (included with QGIS)
+- Python 3.10 or later (included with QGIS)
 
 ## Update Checker
 
@@ -154,7 +179,7 @@ The plugin includes a built-in update checker that can:
 - Display changelog information
 - Download and install updates automatically
 
-Access it via **QGIS Notebook** → **Check for Updates...**
+Access it via **Notebook** → **Check for Updates...**
 
 ## About Dialog
 
@@ -164,7 +189,7 @@ The About dialog displays:
 - Feature list
 - Links to GitHub repository and issue tracker
 
-Access it via **QGIS Notebook** → **About QGIS Notebook**
+Access it via **Notebook** → **About QGIS Notebook**
 
 ## Development
 
@@ -256,19 +281,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Author
-
-**Qiusheng Wu**
-
-- GitHub: [@giswqs](https://github.com/giswqs)
-- Website: [https://wetlands.io](https://wetlands.io)
-
-## Acknowledgments
-
-- Built with the [QGIS Plugin Template](https://github.com/opengeos/qgis-plugin-template)
-- Inspired by Jupyter Notebook and JupyterLab
-- Thanks to the QGIS community for their excellent documentation
 
 ## Changelog
 

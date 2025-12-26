@@ -1,5 +1,5 @@
 [general]
-name=QGIS Notebook
+name=Notebook
 qgisMinimumVersion=3.28
 description=Render and run Jupyter notebooks within QGIS in a dockable panel.
 version=0.1.0
