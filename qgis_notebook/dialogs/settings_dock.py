@@ -109,7 +109,7 @@ class SettingsDockWidget(QDockWidget):
         # Buttons
         button_layout = QHBoxLayout()
 
-        self.save_btn = QPushButton("💾 Save Settings")
+        self.save_btn = QPushButton("Save Settings")
         self.save_btn.setStyleSheet(
             """
             QPushButton {
@@ -126,7 +126,7 @@ class SettingsDockWidget(QDockWidget):
         self.save_btn.clicked.connect(self._save_settings)
         button_layout.addWidget(self.save_btn)
 
-        self.reset_btn = QPushButton("↺ Reset Defaults")
+        self.reset_btn = QPushButton("Reset Defaults")
         self.reset_btn.setStyleSheet(
             """
             QPushButton {

@@ -226,7 +226,7 @@ class UpdateCheckerDialog(QDialog):
         layout.setSpacing(15)
 
         # Header
-        header_label = QLabel("📓 QGIS Notebook Update Checker")
+        header_label = QLabel("QGIS Notebook Update Checker")
         header_font = QFont()
         header_font.setPointSize(14)
         header_font.setBold(True)
@@ -325,7 +325,7 @@ class UpdateCheckerDialog(QDialog):
         # Buttons
         button_layout = QHBoxLayout()
 
-        self.check_btn = QPushButton("🔍 Check for Updates")
+        self.check_btn = QPushButton("Check for Updates")
         self.check_btn.setStyleSheet(
             """
             QPushButton {
@@ -343,7 +343,7 @@ class UpdateCheckerDialog(QDialog):
         self.check_btn.clicked.connect(self.check_for_updates)
         button_layout.addWidget(self.check_btn)
 
-        self.install_btn = QPushButton("⬇ Download and Install")
+        self.install_btn = QPushButton("Download and Install")
         self.install_btn.setEnabled(False)
         self.install_btn.setStyleSheet(
             """
