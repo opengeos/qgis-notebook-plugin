@@ -81,7 +81,7 @@ class QGISNotebook:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
         # Create menu
-        self.menu = QMenu("&QGIS Notebook")
+        self.menu = QMenu("&Notebook")
         self.iface.mainWindow().menuBar().addMenu(self.menu)
 
         # Create toolbar
