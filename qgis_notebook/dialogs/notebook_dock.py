@@ -878,7 +878,7 @@ class NotebookCellWidget(QFrame):
         text = re.sub(r"(</h[1-6]>)\n+", r"\1", text)
 
         # Convert remaining line breaks
-        text = text.replace("\n\n", "<br>")
+        text = text.replace("\n\n", "<br><br>")
         text = text.replace("\n", "<br>")
 
         return text
