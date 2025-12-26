@@ -649,8 +649,8 @@ class NotebookCellWidget(QFrame):
         source = self.cell_data.get("source", [])
         if isinstance(source, list):
             source = "".join(source)
-        # Strip trailing whitespace/newlines
-        source = source.rstrip()
+        # Strip trailing newlines while preserving other trailing whitespace
+        source = source.rstrip("\n")
 
         if self.cell_type == "code":
             self._setup_code_cell(source)
