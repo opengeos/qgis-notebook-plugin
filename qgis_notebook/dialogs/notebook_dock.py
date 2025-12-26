@@ -493,6 +493,7 @@ class NotebookCellWidget(QFrame):
     add_cell_below = pyqtSignal(int, str)  # cell index, cell type
     change_type_requested = pyqtSignal(int, str)  # cell index, new type
     cell_focused = pyqtSignal(int)  # emitted when cell gains focus
+    content_changed = pyqtSignal()  # emitted when cell content is modified
 
     def __init__(self, cell_data, cell_index, parent=None):
         super().__init__(parent)
@@ -689,6 +690,9 @@ class NotebookCellWidget(QFrame):
         # Connect focus tracking
         self.source_edit.focus_changed.connect(self.set_focused)
 
+        # Connect content change tracking
+        self.source_edit.textChanged.connect(self.content_changed.emit)
+
         # Set initial height based on content (dynamic height handled by CodeEditor)
         line_count = max(1, min(20, source.count("\n") + 1))
         # 22 is the approximate line height in pixels; 16 adds vertical padding/margins
@@ -772,6 +776,9 @@ class NotebookCellWidget(QFrame):
         )
         self.markdown_edit.finish_editing.connect(self._finish_markdown_edit)
         self.markdown_edit.focus_changed.connect(self.set_focused)
+
+        # Connect content change tracking
+        self.markdown_edit.textChanged.connect(self.content_changed.emit)
 
         # Set initial height based on content (dynamic height handled by MarkdownEditor)
         line_count = max(1, min(15, source.count("\n") + 1))
@@ -1000,6 +1007,7 @@ class NotebookDockWidget(QDockWidget):
         self.notebook_data = None
         self.cell_widgets = []
         self._focused_cell_index = -1  # Track currently focused cell
+        self._is_dirty = False  # Track unsaved changes
 
         # Execution queue for Run All
         self._execution_queue = []
@@ -1089,6 +1097,37 @@ class NotebookDockWidget(QDockWidget):
         for cell_widget in self.cell_widgets:
             if isinstance(cell_widget, NotebookCellWidget):
                 cell_widget.set_namespace(self.namespace)
+
+    def _mark_dirty(self):
+        """Mark the notebook as having unsaved changes."""
+        self._is_dirty = True
+
+    def _check_unsaved_changes(self):
+        """Check for unsaved changes and prompt user to save.
+
+        Returns:
+            True if it's safe to proceed (saved, discarded, or no changes)
+            False if user cancelled the operation
+        """
+        if not self._is_dirty:
+            return True
+
+        # Show confirmation dialog
+        reply = QMessageBox.question(
+            self,
+            "Unsaved Changes",
+            "The current notebook has unsaved changes.\n\nDo you want to save before continuing?",
+            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            QMessageBox.Save,
+        )
+
+        if reply == QMessageBox.Save:
+            saved = self._save_notebook()
+            return bool(saved)
+        elif reply == QMessageBox.Discard:
+            return True
+        else:  # Cancel
+            return False
 
     def _create_toolbar_button(self, text, color, hover_color, text_color="white"):
         """Create a styled toolbar button."""
@@ -1365,6 +1404,10 @@ class NotebookDockWidget(QDockWidget):
 
     def _open_notebook(self):
         """Open a notebook file."""
+        # Check for unsaved changes first
+        if not self._check_unsaved_changes():
+            return
+
         last_dir = self.settings.value("QGISNotebook/last_directory", "")
 
         file_path, _ = QFileDialog.getOpenFileName(
@@ -1390,6 +1433,7 @@ class NotebookDockWidget(QDockWidget):
             self.path_edit.setText(file_path)
 
             self._render_notebook()
+            self._is_dirty = False  # Freshly loaded notebook is not dirty
             self.status_bar.setText(f"Loaded: {os.path.basename(file_path)}")
 
         except json.JSONDecodeError as e:
@@ -1422,6 +1466,7 @@ class NotebookDockWidget(QDockWidget):
         cell_widget.add_cell_below.connect(self._add_cell_below)
         cell_widget.change_type_requested.connect(self._change_cell_type)
         cell_widget.cell_focused.connect(self._on_cell_focused)
+        cell_widget.content_changed.connect(self._mark_dirty)
 
         # Pass namespace for autocomplete
         cell_widget.set_namespace(self.namespace)
@@ -1453,6 +1498,7 @@ class NotebookDockWidget(QDockWidget):
         index = len(self.cell_widgets)
         new_widget = self._create_cell_widget(cell_data, index)
         self._update_cell_indices()
+        self._mark_dirty()
         self.status_bar.setText(f"Added {cell_type} cell")
 
         # Focus the new cell
@@ -1484,6 +1530,7 @@ class NotebookDockWidget(QDockWidget):
 
         new_widget = self._create_cell_widget(cell_data, index)
         self._update_cell_indices()
+        self._mark_dirty()
         self.status_bar.setText(f"Added {cell_type} cell above [{index + 1}]")
 
         # Focus the new cell
@@ -1500,6 +1547,7 @@ class NotebookDockWidget(QDockWidget):
 
         new_widget = self._create_cell_widget(cell_data, new_index)
         self._update_cell_indices()
+        self._mark_dirty()
         self.status_bar.setText(f"Added {cell_type} cell below [{index + 1}]")
 
         # Focus the new cell
@@ -1534,6 +1582,7 @@ class NotebookDockWidget(QDockWidget):
         widget.deleteLater()
 
         self._update_cell_indices()
+        self._mark_dirty()
         self.status_bar.setText(f"Deleted cell [{index + 1}]")
 
     def _change_cell_type(self, index, new_type):
@@ -1561,6 +1610,7 @@ class NotebookDockWidget(QDockWidget):
         cell_data["source"] = source  # Keep as string for widget
         self._create_cell_widget(cell_data, index)
         self._update_cell_indices()
+        self._mark_dirty()
 
         self.status_bar.setText(f"Changed cell [{index + 1}] to {new_type}")
 
@@ -1817,6 +1867,7 @@ class NotebookDockWidget(QDockWidget):
 
             self.notebook_path = file_path
             self.path_edit.setText(file_path)
+            self._is_dirty = False  # Reset dirty flag after successful save
             self.status_bar.setText(f"Saved: {os.path.basename(file_path)}")
             self.status_bar.setStyleSheet(
                 """
@@ -1835,6 +1886,10 @@ class NotebookDockWidget(QDockWidget):
 
     def _new_notebook(self):
         """Create a new empty notebook."""
+        # Check for unsaved changes first
+        if not self._check_unsaved_changes():
+            return
+
         self.notebook_data = self._create_empty_notebook()
         self.notebook_path = None
         self.path_edit.setText("Untitled.ipynb")
@@ -1844,6 +1899,7 @@ class NotebookDockWidget(QDockWidget):
         self._setup_namespace()
 
         self._render_notebook()
+        self._is_dirty = False  # New notebook starts clean
         self.status_bar.setText("New notebook created")
 
     def _create_empty_notebook(self):
