@@ -241,15 +241,15 @@ class CodeEditor(QPlainTextEdit):
 
         # Track content changes for dynamic height
         self.textChanged.connect(self._on_text_changed)
-        self._min_height = 80
+        self._min_height = 38
         self._max_height = 400
-        self._line_height = 20
+        self._line_height = 22
 
     def _on_text_changed(self):
         """Adjust height based on content."""
-        line_count = max(3, self.document().blockCount())
+        line_count = max(1, self.document().blockCount())
         new_height = min(
-            self._max_height, max(self._min_height, line_count * self._line_height + 20)
+            self._max_height, max(self._min_height, line_count * self._line_height + 16)
         )
         if self.minimumHeight() != new_height:
             self.setMinimumHeight(new_height)
@@ -443,15 +443,15 @@ class MarkdownEditor(QPlainTextEdit):
 
         # Track content changes for dynamic height
         self.textChanged.connect(self._on_text_changed)
-        self._min_height = 80
+        self._min_height = 38
         self._max_height = 300
-        self._line_height = 20
+        self._line_height = 22
 
     def _on_text_changed(self):
         """Adjust height based on content."""
-        line_count = max(3, self.document().blockCount())
+        line_count = max(1, self.document().blockCount())
         new_height = min(
-            self._max_height, max(self._min_height, line_count * self._line_height + 20)
+            self._max_height, max(self._min_height, line_count * self._line_height + 16)
         )
         if self.minimumHeight() != new_height:
             self.setMinimumHeight(new_height)
@@ -649,6 +649,8 @@ class NotebookCellWidget(QFrame):
         source = self.cell_data.get("source", [])
         if isinstance(source, list):
             source = "".join(source)
+        # Strip trailing newlines while preserving other trailing whitespace
+        source = source.rstrip("\n")
 
         if self.cell_type == "code":
             self._setup_code_cell(source)
@@ -688,19 +690,15 @@ class NotebookCellWidget(QFrame):
         self.source_edit.focus_changed.connect(self.set_focused)
 
         # Set initial height based on content (dynamic height handled by CodeEditor)
-        line_count = max(3, min(20, source.count("\n") + 1))
-        initial_height = line_count * 20 + 20
+        line_count = max(1, min(20, source.count("\n") + 1))
+        # 22 is the approximate line height in pixels; 16 adds vertical padding/margins
+        initial_height = line_count * 22 + 16
         self.source_edit.setMinimumHeight(initial_height)
         self.source_edit.setMaximumHeight(initial_height)
 
         # Set the text after height setup
         self.source_edit.setPlainText(source)
         self.layout.addWidget(self.source_edit)
-
-    def set_namespace(self, namespace):
-        """Set the namespace for autocomplete in code cells."""
-        if self.cell_type == "code" and hasattr(self, "source_edit"):
-            self.source_edit.set_namespace(namespace)
 
         # Output area
         self.output_area = QTextEdit()
@@ -717,9 +715,7 @@ class NotebookCellWidget(QFrame):
             }
         """
         )
-        # Dynamic height based on content (min 50, max 300)
-        self.output_area.setMinimumHeight(50)
-        self.output_area.setMaximumHeight(300)
+        # Start hidden, height will be adjusted dynamically when output is set
         self.output_area.setVisible(False)
         self.layout.addWidget(self.output_area)
 
@@ -727,6 +723,11 @@ class NotebookCellWidget(QFrame):
         outputs = self.cell_data.get("outputs", [])
         if outputs:
             self._display_outputs(outputs)
+
+    def set_namespace(self, namespace):
+        """Set the namespace for autocomplete in code cells."""
+        if self.cell_type == "code" and hasattr(self, "source_edit"):
+            self.source_edit.set_namespace(namespace)
 
     def _setup_markdown_cell(self, source):
         """Set up a markdown cell."""
@@ -773,8 +774,8 @@ class NotebookCellWidget(QFrame):
         self.markdown_edit.focus_changed.connect(self.set_focused)
 
         # Set initial height based on content (dynamic height handled by MarkdownEditor)
-        line_count = max(3, min(15, source.count("\n") + 1))
-        initial_height = line_count * 20 + 20
+        line_count = max(1, min(15, source.count("\n") + 1))
+        initial_height = line_count * 22 + 16
         self.markdown_edit.setMinimumHeight(initial_height)
         self.markdown_edit.setMaximumHeight(initial_height)
 
@@ -793,8 +794,8 @@ class NotebookCellWidget(QFrame):
         self.markdown_edit.setFocus()
         # Update height based on content
         content = self.markdown_edit.toPlainText()
-        line_count = max(3, min(15, content.count("\n") + 1))
-        self.markdown_edit.setFixedHeight(line_count * 20 + 20)
+        line_count = max(1, min(15, content.count("\n") + 1))
+        self.markdown_edit.setFixedHeight(line_count * 22 + 16)
 
     def _finish_markdown_edit(self):
         """Finish editing markdown and render."""
@@ -814,25 +815,40 @@ class NotebookCellWidget(QFrame):
         if not text.strip():
             return "<i style='color:#6E7274;'>Double-click to edit markdown...</i>"
 
-        # Headers
-        text = re.sub(r"^######\s+(.+)$", r"<h6>\1</h6>", text, flags=re.MULTILINE)
-        text = re.sub(r"^#####\s+(.+)$", r"<h5>\1</h5>", text, flags=re.MULTILINE)
-        text = re.sub(r"^####\s+(.+)$", r"<h4>\1</h4>", text, flags=re.MULTILINE)
+        # Headers - use margin:0 to avoid extra spacing
+        text = re.sub(
+            r"^######\s+(.+)$",
+            r"<h6 style='margin:0.3em 0;'>\1</h6>",
+            text,
+            flags=re.MULTILINE,
+        )
+        text = re.sub(
+            r"^#####\s+(.+)$",
+            r"<h5 style='margin:0.3em 0;'>\1</h5>",
+            text,
+            flags=re.MULTILINE,
+        )
+        text = re.sub(
+            r"^####\s+(.+)$",
+            r"<h4 style='margin:0.3em 0;'>\1</h4>",
+            text,
+            flags=re.MULTILINE,
+        )
         text = re.sub(
             r"^###\s+(.+)$",
-            r"<h3 style='color:#E8BF6A;'>\1</h3>",
+            r"<h3 style='color:#E8BF6A;margin:0.3em 0;'>\1</h3>",
             text,
             flags=re.MULTILINE,
         )
         text = re.sub(
             r"^##\s+(.+)$",
-            r"<h2 style='color:#E8BF6A;'>\1</h2>",
+            r"<h2 style='color:#E8BF6A;margin:0.3em 0;'>\1</h2>",
             text,
             flags=re.MULTILINE,
         )
         text = re.sub(
             r"^#\s+(.+)$",
-            r"<h1 style='color:#E8BF6A;'>\1</h1>",
+            r"<h1 style='color:#E8BF6A;margin:0.3em 0;'>\1</h1>",
             text,
             flags=re.MULTILINE,
         )
@@ -859,7 +875,10 @@ class NotebookCellWidget(QFrame):
         text = re.sub(r"^\s*[-*]\s+(.+)$", r"&bull; \1<br>", text, flags=re.MULTILINE)
         text = re.sub(r"^\s*\d+\.\s+(.+)$", r"&rarr; \1<br>", text, flags=re.MULTILINE)
 
-        # Line breaks
+        # Remove newlines after closing heading tags (they add extra space)
+        text = re.sub(r"(</h[1-6]>)\n+", r"\1", text)
+
+        # Convert remaining line breaks
         text = text.replace("\n\n", "<br><br>")
         text = text.replace("\n", "<br>")
 
@@ -893,8 +912,12 @@ class NotebookCellWidget(QFrame):
                 )
 
         if output_text:
+            self.output_area.clear()
             self.output_area.setHtml("<br>".join(output_text))
             self.output_area.setVisible(True)
+            # Adjust height based on content
+            doc_height = self.output_area.document().size().height()
+            self.output_area.setFixedHeight(min(200, max(40, int(doc_height) + 16)))
 
     def get_source(self):
         """Get the current source code from the cell."""
@@ -908,10 +931,14 @@ class NotebookCellWidget(QFrame):
 
     def set_output(self, result, stdout, stderr):
         """Set the output of the cell after execution."""
+        # Clear previous output first
+        self.output_area.clear()
+
         output_parts = []
 
         if stdout:
-            output_parts.append(stdout)
+            # Strip trailing newline to avoid extra blank line
+            output_parts.append(stdout.rstrip("\n"))
 
         if result is not None:
             output_parts.append(f"<span style='color:#A9B7C6;'>{repr(result)}</span>")
@@ -922,6 +949,9 @@ class NotebookCellWidget(QFrame):
         if output_parts:
             self.output_area.setHtml("<pre>" + "<br>".join(output_parts) + "</pre>")
             self.output_area.setVisible(True)
+            # Adjust height based on content
+            doc_height = self.output_area.document().size().height()
+            self.output_area.setFixedHeight(min(200, max(40, int(doc_height) + 16)))
         else:
             self.output_area.setVisible(False)
 
