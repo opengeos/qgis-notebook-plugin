@@ -561,6 +561,12 @@ class NotebookCellWidget(QFrame):
             if focused:
                 self.cell_focused.emit(self.cell_index)
 
+    def _clear_cell_output(self):
+        """Clear the output of this cell."""
+        if self.cell_type == "code" and hasattr(self, "output_area"):
+            self.output_area.clear()
+            self.output_area.setVisible(False)
+
     def _show_context_menu(self, pos):
         """Show context menu for cell operations."""
         menu = QMenu(self)
@@ -589,6 +595,12 @@ class NotebookCellWidget(QFrame):
         )
 
         menu.addSeparator()
+
+        # Clear output action (only for code cells)
+        if self.cell_type == "code":
+            clear_output_action = menu.addAction("Clear Output")
+            clear_output_action.triggered.connect(self._clear_cell_output)
+            menu.addSeparator()
 
         # Change cell type
         if self.cell_type == "code":
