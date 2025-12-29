@@ -12,6 +12,8 @@ import traceback
 from io import StringIO
 
 from qgis.PyQt.QtCore import Qt, QSettings, pyqtSignal, QTimer, QSize, QStringListModel
+
+from ..snippets_data import SNIPPETS
 from qgis.PyQt.QtWidgets import (
     QDockWidget,
     QWidget,
@@ -31,6 +33,7 @@ from qgis.PyQt.QtWidgets import (
     QSizePolicy,
     QCompleter,
     QListView,
+    QComboBox,
 )
 from qgis.PyQt.QtGui import (
     QFont,
@@ -1066,6 +1069,9 @@ class NotebookDockWidget(QDockWidget):
         # Load theme colors
         self._load_theme()
 
+        # Load code snippets (from embedded data)
+        self.snippets = SNIPPETS
+
         self._setup_ui()
 
     def _setup_namespace(self):
@@ -1518,14 +1524,62 @@ class NotebookDockWidget(QDockWidget):
         )
         cell_toolbar_layout.addWidget(self.add_md_btn)
 
+        # Add snippet selector
+        if self.snippets:
+            snippet_label = QLabel("Snippets:")
+            snippet_label.setStyleSheet(
+                f"color: {self.colors['text_primary']}; font-size: 11px; margin-left: 8px;"
+            )
+            cell_toolbar_layout.addWidget(snippet_label)
+
+            self.snippet_combo = QComboBox()
+            self.snippet_combo.setMinimumWidth(250)
+            self.snippet_combo.setMaximumWidth(400)
+            self.snippet_combo.setStyleSheet(
+                f"""
+                QComboBox {{
+                    background-color: {self.colors['bg_button']};
+                    color: {self.colors['text_primary']};
+                    border: 1px solid {self.colors['border_primary']};
+                    padding: 3px 8px;
+                    border-radius: 3px;
+                    font-size: 11px;
+                }}
+                QComboBox:hover {{
+                    background-color: {self.colors['bg_button_hover']};
+                }}
+                QComboBox::drop-down {{
+                    border: none;
+                }}
+                QComboBox QAbstractItemView {{
+                    background-color: {self.colors['bg_cell']};
+                    color: {self.colors['text_primary']};
+                    border: 1px solid {self.colors['border_focus']};
+                    selection-background-color: {self.colors['bg_button_primary']};
+                }}
+            """
+            )
+
+            # Add placeholder and snippets
+            self.snippet_combo.addItem("-- Select a snippet to insert --")
+            for snippet in self.snippets:
+                title = snippet["title"]
+                if title:
+                    # Truncate long titles
+                    display_title = title[:70] + "..." if len(title) > 70 else title
+                    self.snippet_combo.addItem(display_title)
+
+            self.snippet_combo.currentIndexChanged.connect(self._insert_snippet)
+            cell_toolbar_layout.addWidget(self.snippet_combo)
+
         # Shortcut help
-        shortcut_label = QLabel(
-            "Ctrl+Enter: Run | Shift+Enter: Run & Next | Alt+Enter: Run & New | Ctrl+Space: Autocomplete"
-        )
-        shortcut_label.setStyleSheet(
-            f"color: {self.colors['text_secondary']}; font-size: 10px;"
-        )
-        cell_toolbar_layout.addWidget(shortcut_label)
+        # shortcut_label = QLabel(
+        #     "Ctrl+Enter: Run | Shift+Enter: Run & Next | Alt+Enter: Run & New | Ctrl+Space: Autocomplete"
+        # )
+        # shortcut_label.setStyleSheet(
+        #     f"color: {self.colors['text_secondary']}; font-size: 10px;"
+        # )
+        # cell_toolbar_layout.addWidget(shortcut_label)
 
         cell_toolbar_layout.addStretch()
         main_layout.addWidget(cell_toolbar_widget)
@@ -1784,6 +1838,65 @@ class NotebookDockWidget(QDockWidget):
         else:
             self._add_cell_at_end(cell_type)
 
+    def _insert_snippet(self, index):
+        """Insert a code snippet into a new cell below the cursor."""
+        # Index 0 is the placeholder text
+        if index == 0:
+            return
+
+        # Get the snippet (index - 1 because of placeholder)
+        snippet_index = index - 1
+        if snippet_index >= len(self.snippets):
+            return
+
+        snippet = self.snippets[snippet_index]
+        snippet_code = snippet["code"]
+
+        # Create a new cell with the snippet code
+        if not self.notebook_data:
+            self.notebook_data = self._create_empty_notebook()
+            self.notebook_data["cells"] = []
+            self._clear_cells()
+            self._focused_cell_index = -1
+
+        # Determine where to insert
+        if self._focused_cell_index >= 0 and self._focused_cell_index < len(
+            self.cell_widgets
+        ):
+            insert_index = self._focused_cell_index + 1
+        else:
+            insert_index = len(self.cell_widgets)
+
+        # Create cell data with snippet code
+        cell_data = self._create_empty_cell("code")
+        cell_data["source"] = snippet_code
+
+        # Insert into notebook data
+        if insert_index >= len(self.notebook_data.get("cells", [])):
+            self.notebook_data["cells"].append(cell_data)
+        else:
+            self.notebook_data["cells"].insert(insert_index, cell_data)
+
+        # Create and display the cell widget
+        new_widget = self._create_cell_widget(cell_data, insert_index)
+        self._update_cell_indices()
+        self._mark_dirty()
+
+        # Update status
+        snippet_title = (
+            snippet["title"][:50] + "..."
+            if len(snippet["title"]) > 50
+            else snippet["title"]
+        )
+        self.status_bar.setText(f"Inserted snippet: {snippet_title}")
+
+        # Focus the new cell
+        QTimer.singleShot(50, new_widget.focus_editor)
+
+        # Reset combobox to placeholder
+        if hasattr(self, "snippet_combo"):
+            self.snippet_combo.setCurrentIndex(0)
+
     def _add_cell_above(self, index, cell_type):
         """Add a new cell above the specified index."""
         if not self.notebook_data:
@@ -1911,7 +2024,7 @@ class NotebookDockWidget(QDockWidget):
             stderr = sys.stderr.getvalue()
             return result, stdout, stderr
 
-        except Exception as e:
+        except Exception:
             stderr = traceback.format_exc()
             return None, "", stderr
 
