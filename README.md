@@ -284,6 +284,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 0.2.0
+- Add support for light theme
+- Add support for clearing output of a code cell
+- Add support for inserting code snippets into a notebook
+
 ### 0.1.0 (Initial Release)
 - Basic notebook rendering and execution
 - Dockable panel interface

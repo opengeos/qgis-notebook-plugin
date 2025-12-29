@@ -2,7 +2,7 @@
 name=Notebook
 qgisMinimumVersion=3.28
 description=Render and run Jupyter notebooks within QGIS in a dockable panel.
-version=0.1.0
+version=0.2.0
 author=Qiusheng Wu
 email=giswqs@gmail.com
 
@@ -35,6 +35,11 @@ experimental=False
 deprecated=False
 
 changelog=
+    0.2.0
+        - Add support for light theme
+        - Add support for clearing output of a code cell
+        - Add support for inserting code snippets into a notebook
+
     0.1.0 - Initial release
         - Basic notebook rendering and execution
         - Dockable panel interface
