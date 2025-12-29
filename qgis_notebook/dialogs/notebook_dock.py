@@ -44,13 +44,24 @@ from qgis.PyQt.QtGui import (
 class PythonHighlighter(QSyntaxHighlighter):
     """Syntax highlighter for Python code."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, colors=None):
         super().__init__(parent)
         self._rules = []
 
+        # Use default dark colors if none provided
+        if colors is None:
+            colors = {
+                "syntax_keyword": "#CF8E6D",
+                "syntax_builtin": "#56A8F5",
+                "syntax_string": "#6AAB73",
+                "syntax_comment": "#7A7E85",
+                "syntax_number": "#2AACB8",
+                "syntax_decorator": "#BBB529",
+            }
+
         # Keywords
         keyword_format = QTextCharFormat()
-        keyword_format.setForeground(QColor("#CF8E6D"))
+        keyword_format.setForeground(QColor(colors["syntax_keyword"]))
         keyword_format.setFontWeight(QFont.Bold)
         keywords = [
             "and",
@@ -94,7 +105,7 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         # Built-in functions
         builtin_format = QTextCharFormat()
-        builtin_format.setForeground(QColor("#56A8F5"))
+        builtin_format.setForeground(QColor(colors["syntax_builtin"]))
         builtins = [
             "abs",
             "all",
@@ -167,24 +178,24 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         # Strings
         string_format = QTextCharFormat()
-        string_format.setForeground(QColor("#6AAB73"))
+        string_format.setForeground(QColor(colors["syntax_string"]))
         self._rules.append((r'"[^"\\]*(\\.[^"\\]*)*"', string_format))
         self._rules.append((r"'[^'\\]*(\\.[^'\\]*)*'", string_format))
 
         # Comments
         comment_format = QTextCharFormat()
-        comment_format.setForeground(QColor("#7A7E85"))
+        comment_format.setForeground(QColor(colors["syntax_comment"]))
         comment_format.setFontItalic(True)
         self._rules.append((r"#[^\n]*", comment_format))
 
         # Numbers
         number_format = QTextCharFormat()
-        number_format.setForeground(QColor("#2AACB8"))
+        number_format.setForeground(QColor(colors["syntax_number"]))
         self._rules.append((r"\b\d+\.?\d*\b", number_format))
 
         # Decorators
         decorator_format = QTextCharFormat()
-        decorator_format.setForeground(QColor("#BBB529"))
+        decorator_format.setForeground(QColor(colors["syntax_decorator"]))
         self._rules.append((r"@\w+", decorator_format))
 
     def highlightBlock(self, text):
@@ -217,27 +228,8 @@ class CodeEditor(QPlainTextEdit):
         self.completer.setCaseSensitivity(Qt.CaseInsensitive)
         self.completer.activated.connect(self._insert_completion)
 
-        # Style the completer popup
-        popup = self.completer.popup()
-        popup.setStyleSheet(
-            """
-            QListView {
-                background-color: #2B2D30;
-                color: #BCBEC4;
-                border: 1px solid #4E94CE;
-                border-radius: 4px;
-                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-                font-size: 11px;
-            }
-            QListView::item:selected {
-                background-color: #365880;
-                color: white;
-            }
-            QListView::item:hover {
-                background-color: #3C3F41;
-            }
-        """
-        )
+        # Autocomplete popup styling will be set when colors are available
+        self.popup_colors = None
 
         # Track content changes for dynamic height
         self.textChanged.connect(self._on_text_changed)
@@ -259,6 +251,29 @@ class CodeEditor(QPlainTextEdit):
     def set_namespace(self, namespace):
         """Set the namespace for autocomplete."""
         self.namespace = namespace
+
+    def set_popup_colors(self, colors):
+        """Set the colors for the autocomplete popup."""
+        popup = self.completer.popup()
+        popup.setStyleSheet(
+            f"""
+            QListView {{
+                background-color: {colors['bg_cell']};
+                color: {colors['text_primary']};
+                border: 1px solid {colors['border_focus']};
+                border-radius: 4px;
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                font-size: 11px;
+            }}
+            QListView::item:selected {{
+                background-color: {colors['bg_button_primary']};
+                color: {colors['text_button']};
+            }}
+            QListView::item:hover {{
+                background-color: {colors['bg_button']};
+            }}
+        """
+        )
 
     def _get_completions(self, obj_name):
         """Get completions for an object."""
@@ -495,11 +510,12 @@ class NotebookCellWidget(QFrame):
     cell_focused = pyqtSignal(int)  # emitted when cell gains focus
     content_changed = pyqtSignal()  # emitted when cell content is modified
 
-    def __init__(self, cell_data, cell_index, parent=None):
+    def __init__(self, cell_data, cell_index, colors, parent=None):
         super().__init__(parent)
         self.cell_data = cell_data
         self.cell_index = cell_index
         self.cell_type = cell_data.get("cell_type", "code")
+        self.colors = colors
         self._editing_markdown = False
         self._is_focused = False
 
@@ -514,26 +530,26 @@ class NotebookCellWidget(QFrame):
         """Update the cell's border style based on focus state."""
         if self._is_focused:
             self.setStyleSheet(
-                """
-                NotebookCellWidget {
-                    background-color: #2B2D30;
-                    border: 2px solid #4E94CE;
+                f"""
+                NotebookCellWidget {{
+                    background-color: {self.colors['bg_cell']};
+                    border: 2px solid {self.colors['border_focus']};
                     border-radius: 6px;
                     margin: 4px;
                     padding: 8px;
-                }
+                }}
             """
             )
         else:
             self.setStyleSheet(
-                """
-                NotebookCellWidget {
-                    background-color: #2B2D30;
-                    border: 1px solid #3C3F41;
+                f"""
+                NotebookCellWidget {{
+                    background-color: {self.colors['bg_cell']};
+                    border: 1px solid {self.colors['border_primary']};
                     border-radius: 6px;
                     margin: 4px;
                     padding: 8px;
-                }
+                }}
             """
             )
 
@@ -608,14 +624,19 @@ class NotebookCellWidget(QFrame):
         # Cell type indicator
         self.index_label = QLabel(f"[{self.cell_index + 1}]")
         self.index_label.setStyleSheet(
-            "color: #6897BB; font-weight: bold; font-size: 11px;"
+            f"color: {self.colors['text_primary']}; font-weight: bold; font-size: 11px;"
         )
         header_layout.addWidget(self.index_label)
 
         self.cell_type_label = QLabel(self.cell_type.upper())
+        cell_type_color = (
+            self.colors["cell_type_code"]
+            if self.cell_type == "code"
+            else self.colors["cell_type_markdown"]
+        )
         self.cell_type_label.setStyleSheet(
-            f"color: {'#CF8E6D' if self.cell_type == 'code' else '#6AAB73'}; "
-            "font-size: 10px; padding: 2px 6px; background: #3C3F41; border-radius: 3px;"
+            f"color: {cell_type_color}; "
+            f"font-size: 10px; padding: 2px 6px; background: {self.colors['bg_button']}; border-radius: 3px;"
         )
         header_layout.addWidget(self.cell_type_label)
         header_layout.addStretch()
@@ -624,21 +645,21 @@ class NotebookCellWidget(QFrame):
         if self.cell_type == "code":
             self.run_btn = QPushButton("Run")
             self.run_btn.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #365880;
-                    color: white;
+                f"""
+                QPushButton {{
+                    background-color: {self.colors['bg_button_primary']};
+                    color: #FFFFFF;
                     border: none;
                     padding: 4px 10px;
                     border-radius: 3px;
                     font-size: 11px;
-                }
-                QPushButton:hover {
-                    background-color: #4A6FA5;
-                }
-                QPushButton:pressed {
-                    background-color: #2D4A6A;
-                }
+                }}
+                QPushButton:hover {{
+                    background-color: {self.colors['bg_button_primary_hover']};
+                }}
+                QPushButton:pressed {{
+                    background-color: {self.colors['bg_button_primary']};
+                }}
             """
             )
             self.run_btn.clicked.connect(lambda: self.executed.emit(self.cell_index))
@@ -662,19 +683,22 @@ class NotebookCellWidget(QFrame):
         """Set up a code cell."""
         self.source_edit = CodeEditor()
         self.source_edit.setStyleSheet(
-            """
-            QPlainTextEdit {
-                background-color: #1E1F22;
-                color: #BCBEC4;
-                border: 1px solid #3C3F41;
+            f"""
+            QPlainTextEdit {{
+                background-color: {self.colors['bg_code']};
+                color: {self.colors['text_code']};
+                border: 1px solid {self.colors['border_primary']};
                 border-radius: 4px;
                 padding: 8px;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            }
+            }}
         """
         )
         # Set up syntax highlighting
-        self.highlighter = PythonHighlighter(self.source_edit.document())
+        self.highlighter = PythonHighlighter(self.source_edit.document(), self.colors)
+
+        # Set autocomplete popup colors
+        self.source_edit.set_popup_colors(self.colors)
 
         # Connect keyboard shortcuts
         self.source_edit.execute_requested.connect(
@@ -709,14 +733,14 @@ class NotebookCellWidget(QFrame):
         self.output_area.setReadOnly(True)
         self.output_area.setFont(QFont("Consolas, Monaco, Courier New, monospace", 10))
         self.output_area.setStyleSheet(
-            """
-            QTextEdit {
-                background-color: #1E1F22;
-                color: #A9B7C6;
-                border: 1px solid #3C3F41;
+            f"""
+            QTextEdit {{
+                background-color: {self.colors['bg_output']};
+                color: {self.colors['text_output']};
+                border: 1px solid {self.colors['border_primary']};
                 border-radius: 4px;
                 padding: 8px;
-            }
+            }}
         """
         )
         # Start hidden, height will be adjusted dynamically when output is set
@@ -742,15 +766,15 @@ class NotebookCellWidget(QFrame):
         self.markdown_label.setWordWrap(True)
         self.markdown_label.setTextFormat(Qt.RichText)
         self.markdown_label.setStyleSheet(
-            """
-            QLabel {
-                color: #BCBEC4;
+            f"""
+            QLabel {{
+                color: {self.colors['text_primary']};
                 padding: 8px;
                 line-height: 1.5;
-                background-color: #1E1F22;
-                border: 1px solid #3C3F41;
+                background-color: {self.colors['bg_code']};
+                border: 1px solid {self.colors['border_primary']};
                 border-radius: 4px;
-            }
+            }}
         """
         )
         self.markdown_label.setMinimumHeight(40)
@@ -763,15 +787,15 @@ class NotebookCellWidget(QFrame):
         # Markdown editor (hidden by default)
         self.markdown_edit = MarkdownEditor()
         self.markdown_edit.setStyleSheet(
-            """
-            QPlainTextEdit {
-                background-color: #1E1F22;
-                color: #BCBEC4;
-                border: 1px solid #4E94CE;
+            f"""
+            QPlainTextEdit {{
+                background-color: {self.colors['bg_code']};
+                color: {self.colors['text_code']};
+                border: 1px solid {self.colors['border_focus']};
                 border-radius: 4px;
                 padding: 8px;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            }
+            }}
         """
         )
         self.markdown_edit.finish_editing.connect(self._finish_markdown_edit)
@@ -820,7 +844,7 @@ class NotebookCellWidget(QFrame):
         import re
 
         if not text.strip():
-            return "<i style='color:#6E7274;'>Double-click to edit markdown...</i>"
+            return f"<i style='color:{self.colors['text_tertiary']};'>Double-click to edit markdown...</i>"
 
         # Headers - use margin:0 to avoid extra spacing
         text = re.sub(
@@ -843,19 +867,19 @@ class NotebookCellWidget(QFrame):
         )
         text = re.sub(
             r"^###\s+(.+)$",
-            r"<h3 style='color:#E8BF6A;margin:0.3em 0;'>\1</h3>",
+            rf"<h3 style='color:{self.colors['header_accent']};margin:0.3em 0;'>\1</h3>",
             text,
             flags=re.MULTILINE,
         )
         text = re.sub(
             r"^##\s+(.+)$",
-            r"<h2 style='color:#E8BF6A;margin:0.3em 0;'>\1</h2>",
+            rf"<h2 style='color:{self.colors['header_accent']};margin:0.3em 0;'>\1</h2>",
             text,
             flags=re.MULTILINE,
         )
         text = re.sub(
             r"^#\s+(.+)$",
-            r"<h1 style='color:#E8BF6A;margin:0.3em 0;'>\1</h1>",
+            rf"<h1 style='color:{self.colors['header_accent']};margin:0.3em 0;'>\1</h1>",
             text,
             flags=re.MULTILINE,
         )
@@ -869,13 +893,15 @@ class NotebookCellWidget(QFrame):
         # Code
         text = re.sub(
             r"`(.+?)`",
-            r"<code style='background:#3C3F41;padding:2px 4px;border-radius:3px;'>\1</code>",
+            rf"<code style='background:{self.colors['bg_button']};padding:2px 4px;border-radius:3px;'>\1</code>",
             text,
         )
 
         # Links
         text = re.sub(
-            r"\[(.+?)\]\((.+?)\)", r"<a href='\2' style='color:#6897BB;'>\1</a>", text
+            r"\[(.+?)\]\((.+?)\)",
+            rf"<a href='\2' style='color:{self.colors['text_primary']};'>\1</a>",
+            text,
         )
 
         # Lists
@@ -915,7 +941,7 @@ class NotebookCellWidget(QFrame):
                 ename = output.get("ename", "Error")
                 evalue = output.get("evalue", "")
                 output_text.append(
-                    f"<span style='color:#FF6B68;'>{ename}: {evalue}</span>"
+                    f"<span style='color:{self.colors['text_error']};'>{ename}: {evalue}</span>"
                 )
 
         if output_text:
@@ -948,10 +974,14 @@ class NotebookCellWidget(QFrame):
             output_parts.append(stdout.rstrip("\n"))
 
         if result is not None:
-            output_parts.append(f"<span style='color:#A9B7C6;'>{repr(result)}</span>")
+            output_parts.append(
+                f"<span style='color:{self.colors['text_output']};'>{repr(result)}</span>"
+            )
 
         if stderr:
-            output_parts.append(f"<span style='color:#FF6B68;'>{stderr}</span>")
+            output_parts.append(
+                f"<span style='color:{self.colors['text_error']};'>{stderr}</span>"
+            )
 
         if output_parts:
             self.output_area.setHtml("<pre>" + "<br>".join(output_parts) + "</pre>")
@@ -1020,6 +1050,9 @@ class NotebookDockWidget(QDockWidget):
         }
         # Pre-import common modules
         self._setup_namespace()
+
+        # Load theme colors
+        self._load_theme()
 
         self._setup_ui()
 
@@ -1092,6 +1125,197 @@ class NotebookDockWidget(QDockWidget):
         except ImportError:
             pass
 
+    def _load_theme(self):
+        """Load theme colors from settings."""
+        # Get color scheme index from settings (0=Dark, 1=Light, 2=Monokai, 3=Solarized Dark)
+        color_scheme = self.settings.value("QGISNotebook/color_scheme", 0, type=int)
+
+        # Define color palettes for each theme
+        if color_scheme == 1:  # Light
+            self.colors = {
+                # Backgrounds
+                "bg_primary": "#FFFFFF",  # Main background
+                "bg_secondary": "#F5F5F5",  # Secondary background
+                "bg_tertiary": "#E8E8E8",  # Tertiary background
+                "bg_cell": "#FAFAFA",  # Cell background
+                "bg_code": "#F8F8F8",  # Code editor background
+                "bg_output": "#F5F5F5",  # Output background
+                "bg_button": "#D0D0D0",  # Button background (darker for better contrast)
+                "bg_button_hover": "#B0B0B0",  # Button hover
+                "bg_button_primary": "#0078D4",  # Primary button
+                "bg_button_primary_hover": "#106EBE",  # Primary button hover
+                "bg_button_success": "#107C10",  # Success button
+                "bg_button_success_hover": "#0E6B0E",  # Success button hover
+                "bg_button_danger": "#D13438",  # Danger button
+                "bg_button_danger_hover": "#A72E2E",  # Danger button hover
+                # Borders
+                "border_primary": "#CCCCCC",  # Primary border
+                "border_secondary": "#E0E0E0",  # Secondary border
+                "border_focus": "#0078D4",  # Focus border
+                # Text
+                "text_primary": "#000000",  # Primary text
+                "text_secondary": "#666666",  # Secondary text
+                "text_tertiary": "#999999",  # Tertiary text
+                "text_code": "#000000",  # Code text
+                "text_output": "#333333",  # Output text
+                "text_error": "#E81123",  # Error text
+                "text_success": "#107C10",  # Success text
+                "text_warning": "#FF8C00",  # Warning text
+                "text_button": "#000000",  # Button text (dark for light theme)
+                # Syntax highlighting (light theme)
+                "syntax_keyword": "#0000FF",  # Keywords
+                "syntax_builtin": "#267F99",  # Built-ins
+                "syntax_string": "#A31515",  # Strings
+                "syntax_comment": "#008000",  # Comments
+                "syntax_number": "#098658",  # Numbers
+                "syntax_decorator": "#795E26",  # Decorators
+                # UI elements
+                "header_accent": "#0078D4",  # Header accent color
+                "cell_type_code": "#0078D4",  # Code cell label
+                "cell_type_markdown": "#107C10",  # Markdown cell label
+                "scrollbar_bg": "#F5F5F5",  # Scrollbar background
+                "scrollbar_handle": "#CCCCCC",  # Scrollbar handle
+                "scrollbar_handle_hover": "#999999",  # Scrollbar handle hover
+            }
+        elif color_scheme == 2:  # Monokai
+            self.colors = {
+                # Backgrounds
+                "bg_primary": "#272822",
+                "bg_secondary": "#2D2E27",
+                "bg_tertiary": "#3E3D32",
+                "bg_cell": "#2D2E27",
+                "bg_code": "#272822",
+                "bg_output": "#2D2E27",
+                "bg_button": "#49483E",  # Darker for better contrast
+                "bg_button_hover": "#5A594E",  # Lighter hover
+                "bg_button_primary": "#66D9EF",
+                "bg_button_primary_hover": "#7EE0F5",
+                "bg_button_success": "#A6E22E",
+                "bg_button_success_hover": "#B8E844",
+                "bg_button_danger": "#F92672",
+                "bg_button_danger_hover": "#FF3D86",
+                # Borders
+                "border_primary": "#49483E",
+                "border_secondary": "#3E3D32",
+                "border_focus": "#66D9EF",
+                # Text
+                "text_primary": "#F8F8F2",
+                "text_secondary": "#BCBCBC",
+                "text_tertiary": "#75715E",
+                "text_code": "#F8F8F2",
+                "text_output": "#F8F8F2",
+                "text_error": "#F92672",
+                "text_success": "#A6E22E",
+                "text_warning": "#E6DB74",
+                "text_button": "#272822",
+                # Syntax highlighting
+                "syntax_keyword": "#F92672",
+                "syntax_builtin": "#66D9EF",
+                "syntax_string": "#E6DB74",
+                "syntax_comment": "#75715E",
+                "syntax_number": "#AE81FF",
+                "syntax_decorator": "#A6E22E",
+                # UI elements
+                "header_accent": "#E6DB74",
+                "cell_type_code": "#F92672",
+                "cell_type_markdown": "#A6E22E",
+                "scrollbar_bg": "#2D2E27",
+                "scrollbar_handle": "#49483E",
+                "scrollbar_handle_hover": "#75715E",
+            }
+        elif color_scheme == 3:  # Solarized Dark
+            self.colors = {
+                # Backgrounds
+                "bg_primary": "#002B36",
+                "bg_secondary": "#073642",
+                "bg_tertiary": "#0E4C5A",
+                "bg_cell": "#073642",
+                "bg_code": "#002B36",
+                "bg_output": "#073642",
+                "bg_button": "#0E4C5A",
+                "bg_button_hover": "#14596B",
+                "bg_button_primary": "#268BD2",
+                "bg_button_primary_hover": "#3C9FE6",
+                "bg_button_success": "#859900",
+                "bg_button_success_hover": "#9BAD14",
+                "bg_button_danger": "#DC322F",
+                "bg_button_danger_hover": "#F04643",
+                # Borders
+                "border_primary": "#0E4C5A",
+                "border_secondary": "#073642",
+                "border_focus": "#268BD2",
+                # Text
+                "text_primary": "#93A1A1",
+                "text_secondary": "#839496",
+                "text_tertiary": "#586E75",
+                "text_code": "#93A1A1",
+                "text_output": "#93A1A1",
+                "text_error": "#DC322F",
+                "text_success": "#859900",
+                "text_warning": "#B58900",
+                "text_button": "#FDF6E3",
+                # Syntax highlighting
+                "syntax_keyword": "#CB4B16",
+                "syntax_builtin": "#268BD2",
+                "syntax_string": "#2AA198",
+                "syntax_comment": "#586E75",
+                "syntax_number": "#6C71C4",
+                "syntax_decorator": "#B58900",
+                # UI elements
+                "header_accent": "#B58900",
+                "cell_type_code": "#CB4B16",
+                "cell_type_markdown": "#859900",
+                "scrollbar_bg": "#073642",
+                "scrollbar_handle": "#0E4C5A",
+                "scrollbar_handle_hover": "#586E75",
+            }
+        else:  # Default: Dark (Darcula) - index 0
+            self.colors = {
+                # Backgrounds
+                "bg_primary": "#1E1F22",
+                "bg_secondary": "#2B2D30",
+                "bg_tertiary": "#252629",
+                "bg_cell": "#2B2D30",
+                "bg_code": "#1E1F22",
+                "bg_output": "#1E1F22",
+                "bg_button": "#3C3F41",
+                "bg_button_hover": "#4E5254",
+                "bg_button_primary": "#365880",
+                "bg_button_primary_hover": "#4A6FA5",
+                "bg_button_success": "#3C5F41",
+                "bg_button_success_hover": "#4A7A50",
+                "bg_button_danger": "#5F3C41",
+                "bg_button_danger_hover": "#7A4A50",
+                # Borders
+                "border_primary": "#3C3F41",
+                "border_secondary": "#3C3F41",
+                "border_focus": "#4E94CE",
+                # Text
+                "text_primary": "#BCBEC4",
+                "text_secondary": "#6E7274",
+                "text_tertiary": "#4E5254",
+                "text_code": "#BCBEC4",
+                "text_output": "#A9B7C6",
+                "text_error": "#FF6B68",
+                "text_success": "#6AAB73",
+                "text_warning": "#E8BF6A",
+                "text_button": "#FFFFFF",
+                # Syntax highlighting
+                "syntax_keyword": "#CF8E6D",
+                "syntax_builtin": "#56A8F5",
+                "syntax_string": "#6AAB73",
+                "syntax_comment": "#7A7E85",
+                "syntax_number": "#2AACB8",
+                "syntax_decorator": "#BBB529",
+                # UI elements
+                "header_accent": "#E8BF6A",
+                "cell_type_code": "#CF8E6D",
+                "cell_type_markdown": "#6AAB73",
+                "scrollbar_bg": "#2B2D30",
+                "scrollbar_handle": "#4E5254",
+                "scrollbar_handle_hover": "#6E7274",
+            }
+
     def _update_cell_namespaces(self):
         """Update the namespace in all cell widgets for autocomplete."""
         for cell_widget in self.cell_widgets:
@@ -1129,15 +1353,39 @@ class NotebookDockWidget(QDockWidget):
         else:  # Cancel
             return False
 
-    def _create_toolbar_button(self, text, color, hover_color, text_color="white"):
-        """Create a styled toolbar button."""
+    def _create_toolbar_button(self, text, button_type="normal"):
+        """Create a styled toolbar button.
+
+        Args:
+            text: Button text
+            button_type: Type of button (normal, primary, success, danger)
+        """
         btn = QPushButton(text)
         btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         btn.setMinimumHeight(28)
+
+        # Determine colors based on button type
+        if button_type == "primary":
+            bg_color = self.colors["bg_button_primary"]
+            hover_color = self.colors["bg_button_primary_hover"]
+            text_color = "#FFFFFF"  # Always white for colored buttons
+        elif button_type == "success":
+            bg_color = self.colors["bg_button_success"]
+            hover_color = self.colors["bg_button_success_hover"]
+            text_color = "#FFFFFF"  # Always white for colored buttons
+        elif button_type == "danger":
+            bg_color = self.colors["bg_button_danger"]
+            hover_color = self.colors["bg_button_danger_hover"]
+            text_color = "#FFFFFF"  # Always white for colored buttons
+        else:  # normal
+            bg_color = self.colors["bg_button"]
+            hover_color = self.colors["bg_button_hover"]
+            text_color = self.colors["text_button"]  # Use theme-specific color
+
         btn.setStyleSheet(
             f"""
             QPushButton {{
-                background-color: {color};
+                background-color: {bg_color};
                 color: {text_color};
                 border: none;
                 padding: 5px 15px;
@@ -1149,11 +1397,11 @@ class NotebookDockWidget(QDockWidget):
                 background-color: {hover_color};
             }}
             QPushButton:pressed {{
-                background-color: {color};
+                background-color: {bg_color};
             }}
             QPushButton:disabled {{
-                background-color: #3C3F41;
-                color: #6E7274;
+                background-color: {self.colors["bg_button"]};
+                color: {self.colors["text_tertiary"]};
             }}
         """
         )
@@ -1170,40 +1418,36 @@ class NotebookDockWidget(QDockWidget):
 
         # Main toolbar
         toolbar_widget = QWidget()
-        toolbar_widget.setStyleSheet("background-color: #2B2D30;")
+        toolbar_widget.setStyleSheet(
+            f"background-color: {self.colors['bg_secondary']};"
+        )
         toolbar_widget.setMinimumHeight(44)
         toolbar_layout = QHBoxLayout(toolbar_widget)
         toolbar_layout.setContentsMargins(8, 8, 8, 8)
         toolbar_layout.setSpacing(8)
 
         # Open button
-        self.open_btn = self._create_toolbar_button("Open", "#365880", "#4A6FA5")
+        self.open_btn = self._create_toolbar_button("Open", "primary")
         self.open_btn.clicked.connect(self._open_notebook)
         toolbar_layout.addWidget(self.open_btn)
 
         # Run all button
-        self.run_all_btn = self._create_toolbar_button("Run All", "#3C5F41", "#4A7A50")
+        self.run_all_btn = self._create_toolbar_button("Run All", "success")
         self.run_all_btn.clicked.connect(self._run_all_cells)
         toolbar_layout.addWidget(self.run_all_btn)
 
         # Clear outputs button
-        self.clear_btn = self._create_toolbar_button(
-            "Clear Outputs", "#5F3C41", "#7A4A50"
-        )
+        self.clear_btn = self._create_toolbar_button("Clear Outputs", "danger")
         self.clear_btn.clicked.connect(self._clear_outputs)
         toolbar_layout.addWidget(self.clear_btn)
 
         # Save button
-        self.save_btn = self._create_toolbar_button(
-            "Save", "#3C3F41", "#4E5254", "#BCBEC4"
-        )
+        self.save_btn = self._create_toolbar_button("Save", "normal")
         self.save_btn.clicked.connect(self._save_notebook)
         toolbar_layout.addWidget(self.save_btn)
 
         # New notebook button
-        self.new_btn = self._create_toolbar_button(
-            "New", "#3C3F41", "#4E5254", "#BCBEC4"
-        )
+        self.new_btn = self._create_toolbar_button("New", "normal")
         self.new_btn.clicked.connect(self._new_notebook)
         toolbar_layout.addWidget(self.new_btn)
 
@@ -1212,7 +1456,9 @@ class NotebookDockWidget(QDockWidget):
 
         # Second toolbar for cell operations
         cell_toolbar_widget = QWidget()
-        cell_toolbar_widget.setStyleSheet("background-color: #252629;")
+        cell_toolbar_widget.setStyleSheet(
+            f"background-color: {self.colors['bg_tertiary']};"
+        )
         cell_toolbar_widget.setMinimumHeight(36)
         cell_toolbar_layout = QHBoxLayout(cell_toolbar_widget)
         cell_toolbar_layout.setContentsMargins(8, 4, 8, 4)
@@ -1222,17 +1468,17 @@ class NotebookDockWidget(QDockWidget):
         self.add_code_btn = QPushButton("+ Code")
         self.add_code_btn.setMinimumHeight(24)
         self.add_code_btn.setStyleSheet(
-            """
-            QPushButton {
+            f"""
+            QPushButton {{
                 background-color: transparent;
-                color: #CF8E6D;
-                border: 1px solid #CF8E6D;
+                color: {self.colors['cell_type_code']};
+                border: 1px solid {self.colors['cell_type_code']};
                 padding: 3px 12px;
                 border-radius: 3px;
                 font-size: 11px;
                 font-weight: bold;
-            }
-            QPushButton:hover { background-color: #3C3F41; }
+            }}
+            QPushButton:hover {{ background-color: {self.colors['bg_button']}; }}
         """
         )
         self.add_code_btn.clicked.connect(lambda: self._add_cell_below_focused("code"))
@@ -1242,17 +1488,17 @@ class NotebookDockWidget(QDockWidget):
         self.add_md_btn = QPushButton("+ Markdown")
         self.add_md_btn.setMinimumHeight(24)
         self.add_md_btn.setStyleSheet(
-            """
-            QPushButton {
+            f"""
+            QPushButton {{
                 background-color: transparent;
-                color: #6AAB73;
-                border: 1px solid #6AAB73;
+                color: {self.colors['cell_type_markdown']};
+                border: 1px solid {self.colors['cell_type_markdown']};
                 padding: 3px 12px;
                 border-radius: 3px;
                 font-size: 11px;
                 font-weight: bold;
-            }
-            QPushButton:hover { background-color: #3C3F41; }
+            }}
+            QPushButton:hover {{ background-color: {self.colors['bg_button']}; }}
         """
         )
         self.add_md_btn.clicked.connect(
@@ -1264,7 +1510,9 @@ class NotebookDockWidget(QDockWidget):
         shortcut_label = QLabel(
             "Ctrl+Enter: Run | Shift+Enter: Run & Next | Alt+Enter: Run & New | Ctrl+Space: Autocomplete"
         )
-        shortcut_label.setStyleSheet("color: #6E7274; font-size: 10px;")
+        shortcut_label.setStyleSheet(
+            f"color: {self.colors['text_secondary']}; font-size: 10px;"
+        )
         cell_toolbar_layout.addWidget(shortcut_label)
 
         cell_toolbar_layout.addStretch()
@@ -1272,26 +1520,28 @@ class NotebookDockWidget(QDockWidget):
 
         # File path display
         path_widget = QWidget()
-        path_widget.setStyleSheet("background-color: #1E1F22;")
+        path_widget.setStyleSheet(f"background-color: {self.colors['bg_code']};")
         path_widget.setMinimumHeight(28)
         path_layout = QHBoxLayout(path_widget)
         path_layout.setContentsMargins(8, 4, 8, 4)
 
         path_icon = QLabel("NB")
-        path_icon.setStyleSheet("color: #E8BF6A; font-weight: bold; font-size: 11px;")
+        path_icon.setStyleSheet(
+            f"color: {self.colors['header_accent']}; font-weight: bold; font-size: 11px;"
+        )
         path_layout.addWidget(path_icon)
 
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
         self.path_edit.setPlaceholderText("No notebook loaded...")
         self.path_edit.setStyleSheet(
-            """
-            QLineEdit {
+            f"""
+            QLineEdit {{
                 background-color: transparent;
-                color: #6897BB;
+                color: {self.colors['text_primary']};
                 border: none;
                 font-size: 11px;
-            }
+            }}
         """
         )
         path_layout.addWidget(self.path_edit)
@@ -1302,29 +1552,31 @@ class NotebookDockWidget(QDockWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet(
-            """
-            QScrollArea {
-                background-color: #1E1F22;
+            f"""
+            QScrollArea {{
+                background-color: {self.colors['bg_primary']};
                 border: none;
-            }
-            QScrollBar:vertical {
-                background-color: #2B2D30;
+            }}
+            QScrollBar:vertical {{
+                background-color: {self.colors['scrollbar_bg']};
                 width: 12px;
                 border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #4E5254;
+            }}
+            QScrollBar::handle:vertical {{
+                background-color: {self.colors['scrollbar_handle']};
                 border-radius: 6px;
                 min-height: 30px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #6E7274;
-            }
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background-color: {self.colors['scrollbar_handle_hover']};
+            }}
         """
         )
 
         self.cells_container = QWidget()
-        self.cells_container.setStyleSheet("background-color: #1E1F22;")
+        self.cells_container.setStyleSheet(
+            f"background-color: {self.colors['bg_primary']};"
+        )
         self.cells_layout = QVBoxLayout(self.cells_container)
         self.cells_layout.setContentsMargins(8, 8, 8, 8)
         self.cells_layout.setSpacing(8)
@@ -1337,14 +1589,14 @@ class NotebookDockWidget(QDockWidget):
         self.status_bar = QLabel("Ready")
         self.status_bar.setMinimumHeight(28)
         self.status_bar.setStyleSheet(
-            """
-            QLabel {
-                background-color: #2B2D30;
-                color: #6E7274;
+            f"""
+            QLabel {{
+                background-color: {self.colors['bg_secondary']};
+                color: {self.colors['text_secondary']};
                 padding: 6px 10px;
                 font-size: 11px;
-                border-top: 1px solid #3C3F41;
-            }
+                border-top: 1px solid {self.colors['border_primary']};
+            }}
         """
         )
         main_layout.addWidget(self.status_bar)
@@ -1358,24 +1610,24 @@ class NotebookDockWidget(QDockWidget):
         self._clear_cells()
 
         welcome = QLabel(
-            """
+            f"""
             <div style='text-align: center; padding: 40px;'>
-                <h2 style='color: #E8BF6A;'>QGIS Notebook</h2>
-                <p style='color: #6E7274; font-size: 13px;'>
+                <h2 style='color: {self.colors['header_accent']};'>QGIS Notebook</h2>
+                <p style='color: {self.colors['text_secondary']}; font-size: 13px;'>
                     Open a Jupyter notebook (.ipynb) to get started<br>
                     or create a new notebook.
                 </p>
-                <p style='color: #4E5254; font-size: 11px; margin-top: 20px;'>
+                <p style='color: {self.colors['text_tertiary']}; font-size: 11px; margin-top: 20px;'>
                     Click <b>Open</b> to load an existing notebook<br>
                     or <b>New</b> to create a new one.
                 </p>
-                <p style='color: #4E5254; font-size: 11px; margin-top: 10px;'>
+                <p style='color: {self.colors['text_tertiary']}; font-size: 11px; margin-top: 10px;'>
                     <b>Pre-imported:</b><br>
                     iface, QgsProject, QgsVectorLayer, QgsRasterLayer, QgsGeometry,<br>
                     QgsFeature, QgsPointXY, processing, os, sys, json, math,<br>
                     numpy (np), pandas (pd) if available
                 </p>
-                <p style='color: #4E5254; font-size: 11px; margin-top: 10px;'>
+                <p style='color: {self.colors['text_tertiary']}; font-size: 11px; margin-top: 10px;'>
                     <b>Shortcuts:</b><br>
                     Ctrl+Enter: Run cell<br>
                     Shift+Enter: Run and move to next<br>
@@ -1457,7 +1709,7 @@ class NotebookDockWidget(QDockWidget):
 
     def _create_cell_widget(self, cell_data, index):
         """Create a cell widget and add it to the layout."""
-        cell_widget = NotebookCellWidget(cell_data, index)
+        cell_widget = NotebookCellWidget(cell_data, index, self.colors)
         cell_widget.executed.connect(self._execute_cell)
         cell_widget.execute_and_advance.connect(self._execute_and_advance)
         cell_widget.execute_and_insert.connect(self._execute_and_insert)
@@ -1690,27 +1942,27 @@ class NotebookDockWidget(QDockWidget):
         if stderr:
             self.status_bar.setText(f"Cell [{cell_index + 1}] completed with errors")
             self.status_bar.setStyleSheet(
-                """
-                QLabel {
-                    background-color: #2B2D30;
-                    color: #FF6B68;
+                f"""
+                QLabel {{
+                    background-color: {self.colors['bg_secondary']};
+                    color: {self.colors['text_error']};
                     padding: 6px 10px;
                     font-size: 11px;
-                    border-top: 1px solid #3C3F41;
-                }
+                    border-top: 1px solid {self.colors['border_primary']};
+                }}
             """
             )
         else:
             self.status_bar.setText(f"Cell [{cell_index + 1}] executed successfully")
             self.status_bar.setStyleSheet(
-                """
-                QLabel {
-                    background-color: #2B2D30;
-                    color: #6AAB73;
+                f"""
+                QLabel {{
+                    background-color: {self.colors['bg_secondary']};
+                    color: {self.colors['text_success']};
                     padding: 6px 10px;
                     font-size: 11px;
-                    border-top: 1px solid #3C3F41;
-                }
+                    border-top: 1px solid {self.colors['border_primary']};
+                }}
             """
             )
 
@@ -1778,14 +2030,14 @@ class NotebookDockWidget(QDockWidget):
             self.run_all_btn.setEnabled(True)
             self.status_bar.setText("Finished running all cells")
             self.status_bar.setStyleSheet(
-                """
-                QLabel {
-                    background-color: #2B2D30;
-                    color: #6AAB73;
+                f"""
+                QLabel {{
+                    background-color: {self.colors['bg_secondary']};
+                    color: {self.colors['text_success']};
                     padding: 6px 10px;
                     font-size: 11px;
-                    border-top: 1px solid #3C3F41;
-                }
+                    border-top: 1px solid {self.colors['border_primary']};
+                }}
             """
             )
             return
@@ -1808,14 +2060,14 @@ class NotebookDockWidget(QDockWidget):
 
         self.status_bar.setText("Outputs cleared")
         self.status_bar.setStyleSheet(
-            """
-            QLabel {
-                background-color: #2B2D30;
-                color: #6E7274;
+            f"""
+            QLabel {{
+                background-color: {self.colors['bg_secondary']};
+                color: {self.colors['text_secondary']};
                 padding: 6px 10px;
                 font-size: 11px;
-                border-top: 1px solid #3C3F41;
-            }
+                border-top: 1px solid {self.colors['border_primary']};
+            }}
         """
         )
 
@@ -1870,14 +2122,14 @@ class NotebookDockWidget(QDockWidget):
             self._is_dirty = False  # Reset dirty flag after successful save
             self.status_bar.setText(f"Saved: {os.path.basename(file_path)}")
             self.status_bar.setStyleSheet(
-                """
-                QLabel {
-                    background-color: #2B2D30;
-                    color: #6AAB73;
+                f"""
+                QLabel {{
+                    background-color: {self.colors['bg_secondary']};
+                    color: {self.colors['text_success']};
                     padding: 6px 10px;
                     font-size: 11px;
-                    border-top: 1px solid #3C3F41;
-                }
+                    border-top: 1px solid {self.colors['border_primary']};
+                }}
             """
             )
 
