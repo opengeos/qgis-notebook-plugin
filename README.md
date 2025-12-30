@@ -39,6 +39,12 @@ The plugin provides a clean, dark-themed interface that integrates seamlessly wi
 ![](https://github.com/user-attachments/assets/9addca25-c9b0-49f6-b19a-4d4aaf92d5fa)
 
 
+## Video Tutorial
+
+👉 [Run Jupyter Notebooks Directly Inside QGIS! | QGIS Notebook Plugin Tutorial](https://youtu.be/Nr2QEZq2Q_Q)
+
+[![QGIS Notebook Plugin](https://github.com/user-attachments/assets/ca52a874-f920-45cb-980d-f77006f3f2fd)](https://youtu.be/Nr2QEZq2Q_Q)
+
 ## Installation
 
 ### From QGIS Plugin Manager (Recommended)
