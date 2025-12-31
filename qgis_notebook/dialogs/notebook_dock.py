@@ -236,15 +236,21 @@ class CodeEditor(QPlainTextEdit):
 
         # Track content changes for dynamic height
         self.textChanged.connect(self._on_text_changed)
-        self._min_height = 38
+        # Calculate line height from font metrics instead of hardcoding
+        font_metrics = self.fontMetrics()
+        self._line_height = font_metrics.lineSpacing()
+        self._min_height = self._line_height + 20  # One line plus padding
         self._max_height = 400
-        self._line_height = 22
 
     def _on_text_changed(self):
         """Adjust height based on content."""
         line_count = max(1, self.document().blockCount())
+        # Use document margins for more accurate padding calculation
+        margins = self.contentsMargins()
+        padding = margins.top() + margins.bottom() + 20  # Add extra buffer for cursor
         new_height = min(
-            self._max_height, max(self._min_height, line_count * self._line_height + 16)
+            self._max_height,
+            max(self._min_height, line_count * self._line_height + padding),
         )
         if self.minimumHeight() != new_height:
             self.setMinimumHeight(new_height)
@@ -461,15 +467,21 @@ class MarkdownEditor(QPlainTextEdit):
 
         # Track content changes for dynamic height
         self.textChanged.connect(self._on_text_changed)
-        self._min_height = 38
+        # Calculate line height from font metrics instead of hardcoding
+        font_metrics = self.fontMetrics()
+        self._line_height = font_metrics.lineSpacing()
+        self._min_height = self._line_height + 20  # One line plus padding
         self._max_height = 300
-        self._line_height = 22
 
     def _on_text_changed(self):
         """Adjust height based on content."""
         line_count = max(1, self.document().blockCount())
+        # Use document margins for more accurate padding calculation
+        margins = self.contentsMargins()
+        padding = margins.top() + margins.bottom() + 20  # Add extra buffer for cursor
         new_height = min(
-            self._max_height, max(self._min_height, line_count * self._line_height + 16)
+            self._max_height,
+            max(self._min_height, line_count * self._line_height + padding),
         )
         if self.minimumHeight() != new_height:
             self.setMinimumHeight(new_height)
@@ -732,15 +744,10 @@ class NotebookCellWidget(QFrame):
         # Connect content change tracking
         self.source_edit.textChanged.connect(self.content_changed.emit)
 
-        # Set initial height based on content (dynamic height handled by CodeEditor)
-        line_count = max(1, min(20, source.count("\n") + 1))
-        # 22 is the approximate line height in pixels; 16 adds vertical padding/margins
-        initial_height = line_count * 22 + 16
-        self.source_edit.setMinimumHeight(initial_height)
-        self.source_edit.setMaximumHeight(initial_height)
-
-        # Set the text after height setup
+        # Set the text - the CodeEditor's _on_text_changed will handle height
         self.source_edit.setPlainText(source)
+        # Force height recalculation using font metrics (handles platform differences)
+        self.source_edit._on_text_changed()
         self.layout.addWidget(self.source_edit)
 
         # Output area
@@ -819,14 +826,10 @@ class NotebookCellWidget(QFrame):
         # Connect content change tracking
         self.markdown_edit.textChanged.connect(self.content_changed.emit)
 
-        # Set initial height based on content (dynamic height handled by MarkdownEditor)
-        line_count = max(1, min(15, source.count("\n") + 1))
-        initial_height = line_count * 22 + 16
-        self.markdown_edit.setMinimumHeight(initial_height)
-        self.markdown_edit.setMaximumHeight(initial_height)
-
-        # Set the text after height setup
+        # Set the text - the MarkdownEditor's _on_text_changed will handle height
         self.markdown_edit.setPlainText(source)
+        # Force height recalculation using font metrics (handles platform differences)
+        self.markdown_edit._on_text_changed()
         self.markdown_edit.setVisible(False)
         self.layout.addWidget(self.markdown_edit)
 
@@ -838,10 +841,8 @@ class NotebookCellWidget(QFrame):
         self.markdown_label.setVisible(False)
         self.markdown_edit.setVisible(True)
         self.markdown_edit.setFocus()
-        # Update height based on content
-        content = self.markdown_edit.toPlainText()
-        line_count = max(1, min(15, content.count("\n") + 1))
-        self.markdown_edit.setFixedHeight(line_count * 22 + 16)
+        # Update height based on content using font metrics
+        self.markdown_edit._on_text_changed()
 
     def _finish_markdown_edit(self):
         """Finish editing markdown and render."""
