@@ -290,6 +290,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 0.3.0
+- Fix line spacing issue on Linux
+
 ### 0.2.0
 - Add support for light theme
 - Add support for clearing output of a code cell
