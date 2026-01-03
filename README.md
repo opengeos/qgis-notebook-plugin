@@ -2,7 +2,7 @@
 
 A QGIS plugin for rendering and running Jupyter notebooks directly within QGIS. The plugin provides a dockable panel interface for interactive notebook execution.
 
-![QGIS Notebook](https://img.shields.io/badge/QGIS-3.28+-green.svg)
+[![QGIS Plugin](https://img.shields.io/badge/QGIS-Plugin-green.svg)](https://plugins.qgis.org/plugins/qgis_notebook)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
 ## Features
