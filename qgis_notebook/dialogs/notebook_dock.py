@@ -8,10 +8,19 @@ Jupyter notebooks within QGIS.
 import json
 import os
 import sys
+import time
 import traceback
 from io import StringIO
 
-from qgis.PyQt.QtCore import Qt, QSettings, pyqtSignal, QTimer, QSize, QStringListModel
+from qgis.PyQt.QtCore import (
+    Qt,
+    QSettings,
+    pyqtSignal,
+    QTimer,
+    QSize,
+    QStringListModel,
+    QEvent,
+)
 
 from ..snippets_data import SNIPPETS
 from qgis.PyQt.QtWidgets import (
@@ -533,6 +542,7 @@ class NotebookCellWidget(QFrame):
         self.colors = colors
         self._editing_markdown = False
         self._is_focused = False
+        self._is_selected = False  # Track selection state (for command mode)
 
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
         self._update_style()
@@ -542,8 +552,8 @@ class NotebookCellWidget(QFrame):
         self.customContextMenuRequested.connect(self._show_context_menu)
 
     def _update_style(self):
-        """Update the cell's border style based on focus state."""
-        if self._is_focused:
+        """Update the cell's border style based on focus and selection state."""
+        if self._is_focused or self._is_selected:
             self.setStyleSheet(
                 f"""
                 NotebookCellWidget {{
@@ -575,6 +585,22 @@ class NotebookCellWidget(QFrame):
             self._update_style()
             if focused:
                 self.cell_focused.emit(self.cell_index)
+
+    def set_selected(self, selected):
+        """Set the selection state (for command mode highlighting).
+
+        Args:
+            selected: Whether this cell is selected.
+        """
+        if self._is_selected != selected:
+            self._is_selected = selected
+            self._update_style()
+
+    def mousePressEvent(self, event):
+        """Handle mouse press to select the cell."""
+        super().mousePressEvent(event)
+        # Emit cell_focused to select this cell
+        self.cell_focused.emit(self.cell_index)
 
     def _clear_cell_output(self):
         """Clear the output of this cell."""
@@ -1058,6 +1084,10 @@ class NotebookDockWidget(QDockWidget):
         # Execution queue for Run All
         self._execution_queue = []
         self._is_running_all = False
+
+        # Keyboard shortcut state (for JupyterLab-style shortcuts)
+        self._last_d_press_time = 0  # Track time of last 'D' press for D,D shortcut
+        self._clipboard_cell_data = None  # Store cut cell data
 
         # Python namespace for execution
         self.namespace = {
@@ -1616,9 +1646,9 @@ class NotebookDockWidget(QDockWidget):
         main_layout.addWidget(path_widget)
 
         # Scroll area for cells
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet(
             f"""
             QScrollArea {{
                 background-color: {self.colors['bg_primary']};
@@ -1649,8 +1679,11 @@ class NotebookDockWidget(QDockWidget):
         self.cells_layout.setSpacing(8)
         self.cells_layout.addStretch()
 
-        scroll.setWidget(self.cells_container)
-        main_layout.addWidget(scroll)
+        self.scroll_area.setWidget(self.cells_container)
+        main_layout.addWidget(self.scroll_area)
+
+        # Install event filter at application level to capture keyboard shortcuts
+        QApplication.instance().installEventFilter(self)
 
         # Status bar
         self.status_bar = QLabel("Ready")
@@ -1796,7 +1829,13 @@ class NotebookDockWidget(QDockWidget):
 
     def _on_cell_focused(self, cell_index):
         """Handle when a cell gains focus."""
+        old_index = self._focused_cell_index
         self._focused_cell_index = cell_index
+
+        # Update selection state for all cells
+        for i, widget in enumerate(self.cell_widgets):
+            if isinstance(widget, NotebookCellWidget):
+                widget.set_selected(i == cell_index)
 
     def _update_cell_indices(self):
         """Update all cell indices after adding/removing cells."""
@@ -2311,7 +2350,223 @@ class NotebookDockWidget(QDockWidget):
 
     def closeEvent(self, event):
         """Handle dock widget close event."""
+        # Remove event filter
+        app = QApplication.instance()
+        if app:
+            app.removeEventFilter(self)
         # Cancel any running execution
         self._execution_queue = []
         self._is_running_all = False
         event.accept()
+
+    def _is_in_command_mode(self):
+        """Check if we're in command mode (no text editor has focus).
+
+        Returns:
+            bool: True if in command mode (safe to use keyboard shortcuts),
+                  False if in edit mode (user is typing in a cell).
+        """
+        focus_widget = QApplication.focusWidget()
+        # If focus is on a text editor, we're in edit mode
+        if isinstance(focus_widget, (QPlainTextEdit, QTextEdit, QLineEdit)):
+            return False
+        return True
+
+    def _move_cell_up(self, index):
+        """Move a cell up by one position.
+
+        Args:
+            index: The index of the cell to move.
+        """
+        if index <= 0 or index >= len(self.cell_widgets):
+            return
+
+        # Swap in notebook data
+        cells = self.notebook_data["cells"]
+        cells[index], cells[index - 1] = cells[index - 1], cells[index]
+
+        # Swap widgets in layout
+        widget = self.cell_widgets[index]
+        self.cells_layout.removeWidget(widget)
+        self.cells_layout.insertWidget(index - 1, widget)
+
+        # Swap in widget list
+        self.cell_widgets[index], self.cell_widgets[index - 1] = (
+            self.cell_widgets[index - 1],
+            self.cell_widgets[index],
+        )
+
+        self._update_cell_indices()
+        self._mark_dirty()
+        self._focused_cell_index = index - 1
+        self.status_bar.setText(f"Moved cell up to [{index}]")
+
+    def _move_cell_down(self, index):
+        """Move a cell down by one position.
+
+        Args:
+            index: The index of the cell to move.
+        """
+        if index < 0 or index >= len(self.cell_widgets) - 1:
+            return
+
+        # Swap in notebook data
+        cells = self.notebook_data["cells"]
+        cells[index], cells[index + 1] = cells[index + 1], cells[index]
+
+        # Swap widgets in layout
+        widget = self.cell_widgets[index]
+        self.cells_layout.removeWidget(widget)
+        self.cells_layout.insertWidget(index + 1, widget)
+
+        # Swap in widget list
+        self.cell_widgets[index], self.cell_widgets[index + 1] = (
+            self.cell_widgets[index + 1],
+            self.cell_widgets[index],
+        )
+
+        self._update_cell_indices()
+        self._mark_dirty()
+        self._focused_cell_index = index + 1
+        self.status_bar.setText(f"Moved cell down to [{index + 2}]")
+
+    def _delete_cell_no_confirm(self, index):
+        """Delete a cell at the specified index without confirmation dialog.
+
+        Args:
+            index: The index of the cell to delete.
+        """
+        if not self.notebook_data or len(self.cell_widgets) <= 1:
+            self.status_bar.setText("Cannot delete the last cell")
+            return
+
+        # Remove from notebook data
+        if index < len(self.notebook_data["cells"]):
+            self.notebook_data["cells"].pop(index)
+
+        # Remove widget
+        widget = self.cell_widgets.pop(index)
+        self.cells_layout.removeWidget(widget)
+        widget.deleteLater()
+
+        self._update_cell_indices()
+        self._mark_dirty()
+        self.status_bar.setText(f"Deleted cell [{index + 1}]")
+
+        # Update focused cell index
+        if self._focused_cell_index >= len(self.cell_widgets):
+            self._focused_cell_index = len(self.cell_widgets) - 1
+
+    def eventFilter(self, obj, event):
+        """Filter events to capture keyboard shortcuts for cell operations.
+
+        Shortcuts (only active in command mode, when not editing a cell):
+            A: Insert code cell above
+            B: Insert code cell below
+            X: Cut selected cell
+            D, D: Delete selected cell (press D twice)
+            Y: Change cell type to Code
+            M: Change cell type to Markdown
+            Ctrl+Shift+Up: Move cell up
+            Ctrl+Shift+Down: Move cell down
+
+        Args:
+            obj: The object that received the event.
+            event: The event to filter.
+
+        Returns:
+            bool: True if the event was handled, False otherwise.
+        """
+        if event.type() != QEvent.KeyPress:
+            return super().eventFilter(obj, event)
+
+        # Only process if we have a notebook and a focused cell
+        if not self.notebook_data or self._focused_cell_index < 0:
+            return super().eventFilter(obj, event)
+
+        # Check if dock widget is visible
+        if not self.isVisible():
+            return super().eventFilter(obj, event)
+
+        # Only process if focus is within this dock widget
+        focus_widget = QApplication.focusWidget()
+        if focus_widget is None:
+            return super().eventFilter(obj, event)
+        if not self.isAncestorOf(focus_widget) and focus_widget is not self:
+            return super().eventFilter(obj, event)
+
+        key = event.key()
+        modifiers = event.modifiers()
+
+        # Ctrl+Shift+Up - Move cell up (works in any mode)
+        if key == Qt.Key_Up and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+            self._move_cell_up(self._focused_cell_index)
+            return True
+
+        # Ctrl+Shift+Down - Move cell down (works in any mode)
+        if key == Qt.Key_Down and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+            self._move_cell_down(self._focused_cell_index)
+            return True
+
+        # Single-letter shortcuts only work in command mode (not editing)
+        if not self._is_in_command_mode():
+            return super().eventFilter(obj, event)
+
+        # A - Insert code cell above
+        if key == Qt.Key_A and not modifiers:
+            self._add_cell_above(self._focused_cell_index, "code")
+            return True
+
+        # B - Insert code cell below
+        if key == Qt.Key_B and not modifiers:
+            self._add_cell_below(self._focused_cell_index, "code")
+            return True
+
+        # Y - Change cell type to Code
+        if key == Qt.Key_Y and not modifiers:
+            if self._focused_cell_index < len(self.cell_widgets):
+                widget = self.cell_widgets[self._focused_cell_index]
+                if widget.cell_type != "code":
+                    self._change_cell_type(self._focused_cell_index, "code")
+            return True
+
+        # M - Change cell type to Markdown
+        if key == Qt.Key_M and not modifiers:
+            if self._focused_cell_index < len(self.cell_widgets):
+                widget = self.cell_widgets[self._focused_cell_index]
+                if widget.cell_type != "markdown":
+                    self._change_cell_type(self._focused_cell_index, "markdown")
+            return True
+
+        # X - Cut selected cell
+        if key == Qt.Key_X and not modifiers:
+            if self._focused_cell_index < len(self.cell_widgets):
+                # Store cell data for potential paste
+                widget = self.cell_widgets[self._focused_cell_index]
+                source = widget.get_source()
+                cell_type = widget.cell_type
+                self._clipboard_cell_data = {
+                    "cell_type": cell_type,
+                    "source": source,
+                }
+                # Also copy to system clipboard
+                QApplication.clipboard().setText(source)
+                # Delete without confirmation
+                self._delete_cell_no_confirm(self._focused_cell_index)
+                self.status_bar.setText("Cell cut to clipboard")
+            return True
+
+        # D, D - Delete selected cell (press D twice within 500ms)
+        if key == Qt.Key_D and not modifiers:
+            current_time = time.time()
+            if current_time - self._last_d_press_time < 0.5:
+                # Second D press within 500ms - delete the cell
+                self._delete_cell_no_confirm(self._focused_cell_index)
+                self._last_d_press_time = 0  # Reset timer
+            else:
+                # First D press - record time
+                self._last_d_press_time = current_time
+                self.status_bar.setText("Press D again to delete cell")
+            return True
+
+        return super().eventFilter(obj, event)
