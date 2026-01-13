@@ -64,6 +64,8 @@ class QGISNotebook:
         action.triggered.connect(callback)
         action.setEnabled(enabled_flag)
         action.setCheckable(checkable)
+        # Prevent macOS from moving this action to the application menu
+        action.setMenuRole(QAction.NoRole)
 
         if status_tip is not None:
             action.setStatusTip(status_tip)
