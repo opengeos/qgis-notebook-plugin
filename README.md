@@ -127,11 +127,31 @@ python install.py --remove
 
 ### Keyboard Shortcuts
 
+The plugin supports JupyterLab-style keyboard shortcuts for efficient notebook editing.
+
+#### Edit Mode (while editing a cell)
+
 | Shortcut | Action |
 |----------|--------|
-| Click **▶ Run** | Execute current cell |
-| Click **▶▶ Run All** | Execute all cells |
-| Click **🗑 Clear Outputs** | Clear all cell outputs |
+| `Ctrl+Enter` | Execute current cell |
+| `Shift+Enter` | Execute cell and move to next |
+| `Alt+Enter` | Execute cell and insert new cell below |
+| `Ctrl+Space` | Trigger autocomplete |
+
+#### Command Mode (cell selected, not editing)
+
+To enter command mode, click outside the text editor area of a cell (e.g., on the cell border or header).
+
+| Shortcut | Action |
+|----------|--------|
+| `A` | Insert code cell above |
+| `B` | Insert code cell below |
+| `X` | Cut selected cell |
+| `D, D` | Delete selected cell (press D twice) |
+| `Y` | Change cell type to Code |
+| `M` | Change cell type to Markdown |
+| `Ctrl+Shift+Up` | Move cell up |
+| `Ctrl+Shift+Down` | Move cell down |
 
 ## Configuration
 
