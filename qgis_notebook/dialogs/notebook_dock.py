@@ -964,9 +964,9 @@ class NotebookCellWidget(QFrame):
             self.output_area.clear()
             self.output_area.setHtml("<br>".join(output_text))
             self.output_area.setVisible(True)
-            # Adjust height based on content
+            # Adjust height based on content (extra space for horizontal scrollbar)
             doc_height = self.output_area.document().size().height()
-            self.output_area.setFixedHeight(min(200, max(40, int(doc_height) + 16)))
+            self.output_area.setFixedHeight(min(200, max(40, int(doc_height) + 32)))
 
     def get_source(self):
         """Get the current source code from the cell."""
@@ -1002,9 +1002,9 @@ class NotebookCellWidget(QFrame):
         if output_parts:
             self.output_area.setHtml("<pre>" + "<br>".join(output_parts) + "</pre>")
             self.output_area.setVisible(True)
-            # Adjust height based on content
+            # Adjust height based on content (extra space for horizontal scrollbar)
             doc_height = self.output_area.document().size().height()
-            self.output_area.setFixedHeight(min(200, max(40, int(doc_height) + 16)))
+            self.output_area.setFixedHeight(min(200, max(40, int(doc_height) + 32)))
         else:
             self.output_area.setVisible(False)
 
