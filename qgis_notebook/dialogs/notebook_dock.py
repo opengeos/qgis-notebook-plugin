@@ -12,7 +12,15 @@ import time
 import traceback
 from io import StringIO
 
-from qgis.PyQt.QtCore import Qt, QSettings, pyqtSignal, QTimer, QSize, QStringListModel, QEvent
+from qgis.PyQt.QtCore import (
+    Qt,
+    QSettings,
+    pyqtSignal,
+    QTimer,
+    QSize,
+    QStringListModel,
+    QEvent,
+)
 
 from ..snippets_data import SNIPPETS
 from qgis.PyQt.QtWidgets import (
