@@ -1876,7 +1876,9 @@ class NotebookDockWidget(QDockWidget):
         cell_widget.cell_focused.connect(self._on_cell_focused)
         cell_widget.content_changed.connect(self._mark_dirty)
         cell_widget.move_up_requested.connect(self._move_cell_up, Qt.QueuedConnection)
-        cell_widget.move_down_requested.connect(self._move_cell_down, Qt.QueuedConnection)
+        cell_widget.move_down_requested.connect(
+            self._move_cell_down, Qt.QueuedConnection
+        )
 
         # Pass namespace for autocomplete
         cell_widget.set_namespace(self.namespace)
