@@ -533,6 +533,8 @@ class NotebookCellWidget(QFrame):
     change_type_requested = pyqtSignal(int, str)  # cell index, new type
     cell_focused = pyqtSignal(int)  # emitted when cell gains focus
     content_changed = pyqtSignal()  # emitted when cell content is modified
+    move_up_requested = pyqtSignal(int)  # cell index
+    move_down_requested = pyqtSignal(int)  # cell index
 
     def __init__(self, cell_data, cell_index, colors, parent=None):
         super().__init__(parent)
@@ -693,6 +695,52 @@ class NotebookCellWidget(QFrame):
         )
         header_layout.addWidget(self.cell_type_label)
         header_layout.addStretch()
+
+        # Move up button
+        self.move_up_btn = QPushButton("▲")
+        self.move_up_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {self.colors['bg_button']};
+                color: {self.colors['text_primary']};
+                border: none;
+                padding: 4px 8px;
+                border-radius: 3px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.colors['bg_button_hover']};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.colors['bg_button']};
+            }}
+        """
+        )
+        self.move_up_btn.clicked.connect(self._on_move_up_clicked)
+        header_layout.addWidget(self.move_up_btn)
+
+        # Move down button
+        self.move_down_btn = QPushButton("▼")
+        self.move_down_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {self.colors['bg_button']};
+                color: {self.colors['text_primary']};
+                border: none;
+                padding: 4px 8px;
+                border-radius: 3px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.colors['bg_button_hover']};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.colors['bg_button']};
+            }}
+        """
+        )
+        self.move_down_btn.clicked.connect(self._on_move_down_clicked)
+        header_layout.addWidget(self.move_down_btn)
 
         # Run button for code cells
         if self.cell_type == "code":
@@ -1043,6 +1091,14 @@ class NotebookCellWidget(QFrame):
             else:
                 self.run_btn.setText("Run")
                 self.run_btn.setEnabled(True)
+
+    def _on_move_up_clicked(self):
+        """Handle move up button click."""
+        self.move_up_requested.emit(self.cell_index)
+
+    def _on_move_down_clicked(self):
+        """Handle move down button click."""
+        self.move_down_requested.emit(self.cell_index)
 
     def update_index(self, new_index):
         """Update the cell index."""
@@ -1819,6 +1875,10 @@ class NotebookDockWidget(QDockWidget):
         cell_widget.change_type_requested.connect(self._change_cell_type)
         cell_widget.cell_focused.connect(self._on_cell_focused)
         cell_widget.content_changed.connect(self._mark_dirty)
+        cell_widget.move_up_requested.connect(self._move_cell_up, Qt.QueuedConnection)
+        cell_widget.move_down_requested.connect(
+            self._move_cell_down, Qt.QueuedConnection
+        )
 
         # Pass namespace for autocomplete
         cell_widget.set_namespace(self.namespace)
