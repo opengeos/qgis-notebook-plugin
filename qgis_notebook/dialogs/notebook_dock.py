@@ -273,8 +273,7 @@ class CodeEditor(QPlainTextEdit):
     def set_popup_colors(self, colors):
         """Set the colors for the autocomplete popup."""
         popup = self.completer.popup()
-        popup.setStyleSheet(
-            f"""
+        popup.setStyleSheet(f"""
             QListView {{
                 background-color: {colors['bg_cell']};
                 color: {colors['text_primary']};
@@ -290,8 +289,7 @@ class CodeEditor(QPlainTextEdit):
             QListView::item:hover {{
                 background-color: {colors['bg_button']};
             }}
-        """
-        )
+        """)
 
     def _get_completions(self, obj_name):
         """Get completions for an object."""
@@ -556,8 +554,7 @@ class NotebookCellWidget(QFrame):
     def _update_style(self):
         """Update the cell's border style based on focus and selection state."""
         if self._is_focused or self._is_selected:
-            self.setStyleSheet(
-                f"""
+            self.setStyleSheet(f"""
                 NotebookCellWidget {{
                     background-color: {self.colors['bg_cell']};
                     border: 2px solid {self.colors['border_focus']};
@@ -565,11 +562,9 @@ class NotebookCellWidget(QFrame):
                     margin: 4px;
                     padding: 8px;
                 }}
-            """
-            )
+            """)
         else:
-            self.setStyleSheet(
-                f"""
+            self.setStyleSheet(f"""
                 NotebookCellWidget {{
                     background-color: {self.colors['bg_cell']};
                     border: 1px solid {self.colors['border_primary']};
@@ -577,8 +572,7 @@ class NotebookCellWidget(QFrame):
                     margin: 4px;
                     padding: 8px;
                 }}
-            """
-            )
+            """)
 
     def set_focused(self, focused):
         """Set the focus state and update visual style."""
@@ -698,8 +692,7 @@ class NotebookCellWidget(QFrame):
 
         # Move up button
         self.move_up_btn = QPushButton("▲")
-        self.move_up_btn.setStyleSheet(
-            f"""
+        self.move_up_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.colors['bg_button']};
                 color: {self.colors['text_primary']};
@@ -714,15 +707,13 @@ class NotebookCellWidget(QFrame):
             QPushButton:pressed {{
                 background-color: {self.colors['bg_button']};
             }}
-        """
-        )
+        """)
         self.move_up_btn.clicked.connect(self._on_move_up_clicked)
         header_layout.addWidget(self.move_up_btn)
 
         # Move down button
         self.move_down_btn = QPushButton("▼")
-        self.move_down_btn.setStyleSheet(
-            f"""
+        self.move_down_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.colors['bg_button']};
                 color: {self.colors['text_primary']};
@@ -737,16 +728,14 @@ class NotebookCellWidget(QFrame):
             QPushButton:pressed {{
                 background-color: {self.colors['bg_button']};
             }}
-        """
-        )
+        """)
         self.move_down_btn.clicked.connect(self._on_move_down_clicked)
         header_layout.addWidget(self.move_down_btn)
 
         # Run button for code cells
         if self.cell_type == "code":
             self.run_btn = QPushButton("Run")
-            self.run_btn.setStyleSheet(
-                f"""
+            self.run_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {self.colors['bg_button_primary']};
                     color: #FFFFFF;
@@ -761,8 +750,7 @@ class NotebookCellWidget(QFrame):
                 QPushButton:pressed {{
                     background-color: {self.colors['bg_button_primary']};
                 }}
-            """
-            )
+            """)
             self.run_btn.clicked.connect(lambda: self.executed.emit(self.cell_index))
             header_layout.addWidget(self.run_btn)
 
@@ -783,8 +771,7 @@ class NotebookCellWidget(QFrame):
     def _setup_code_cell(self, source):
         """Set up a code cell."""
         self.source_edit = CodeEditor()
-        self.source_edit.setStyleSheet(
-            f"""
+        self.source_edit.setStyleSheet(f"""
             QPlainTextEdit {{
                 background-color: {self.colors['bg_code']};
                 color: {self.colors['text_code']};
@@ -793,8 +780,7 @@ class NotebookCellWidget(QFrame):
                 padding: 8px;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             }}
-        """
-        )
+        """)
         # Set up syntax highlighting
         self.highlighter = PythonHighlighter(self.source_edit.document(), self.colors)
 
@@ -828,8 +814,7 @@ class NotebookCellWidget(QFrame):
         self.output_area = QTextEdit()
         self.output_area.setReadOnly(True)
         self.output_area.setFont(QFont("Consolas, Monaco, Courier New, monospace", 10))
-        self.output_area.setStyleSheet(
-            f"""
+        self.output_area.setStyleSheet(f"""
             QTextEdit {{
                 background-color: {self.colors['bg_output']};
                 color: {self.colors['text_output']};
@@ -837,8 +822,7 @@ class NotebookCellWidget(QFrame):
                 border-radius: 4px;
                 padding: 8px;
             }}
-        """
-        )
+        """)
         # Start hidden, height will be adjusted dynamically when output is set
         self.output_area.setVisible(False)
         self.layout.addWidget(self.output_area)
@@ -861,8 +845,7 @@ class NotebookCellWidget(QFrame):
         self.markdown_label = QLabel()
         self.markdown_label.setWordWrap(True)
         self.markdown_label.setTextFormat(Qt.RichText)
-        self.markdown_label.setStyleSheet(
-            f"""
+        self.markdown_label.setStyleSheet(f"""
             QLabel {{
                 color: {self.colors['text_primary']};
                 padding: 8px;
@@ -871,8 +854,7 @@ class NotebookCellWidget(QFrame):
                 border: 1px solid {self.colors['border_primary']};
                 border-radius: 4px;
             }}
-        """
-        )
+        """)
         self.markdown_label.setMinimumHeight(40)
         # Convert markdown to rich text (simple conversion)
         html = self._markdown_to_html(source)
@@ -882,8 +864,7 @@ class NotebookCellWidget(QFrame):
 
         # Markdown editor (hidden by default)
         self.markdown_edit = MarkdownEditor()
-        self.markdown_edit.setStyleSheet(
-            f"""
+        self.markdown_edit.setStyleSheet(f"""
             QPlainTextEdit {{
                 background-color: {self.colors['bg_code']};
                 color: {self.colors['text_code']};
@@ -892,8 +873,7 @@ class NotebookCellWidget(QFrame):
                 padding: 8px;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             }}
-        """
-        )
+        """)
         self.markdown_edit.finish_editing.connect(self._finish_markdown_edit)
         self.markdown_edit.focus_changed.connect(self.set_focused)
 
@@ -1487,8 +1467,7 @@ class NotebookDockWidget(QDockWidget):
             hover_color = self.colors["bg_button_hover"]
             text_color = self.colors["text_button"]  # Use theme-specific color
 
-        btn.setStyleSheet(
-            f"""
+        btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {bg_color};
                 color: {text_color};
@@ -1508,8 +1487,7 @@ class NotebookDockWidget(QDockWidget):
                 background-color: {self.colors["bg_button"]};
                 color: {self.colors["text_tertiary"]};
             }}
-        """
-        )
+        """)
         return btn
 
     def _setup_ui(self):
@@ -1572,8 +1550,7 @@ class NotebookDockWidget(QDockWidget):
         # Add code cell button
         self.add_code_btn = QPushButton("+ Code")
         self.add_code_btn.setMinimumHeight(24)
-        self.add_code_btn.setStyleSheet(
-            f"""
+        self.add_code_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
                 color: {self.colors['cell_type_code']};
@@ -1584,16 +1561,14 @@ class NotebookDockWidget(QDockWidget):
                 font-weight: bold;
             }}
             QPushButton:hover {{ background-color: {self.colors['bg_button']}; }}
-        """
-        )
+        """)
         self.add_code_btn.clicked.connect(lambda: self._add_cell_below_focused("code"))
         cell_toolbar_layout.addWidget(self.add_code_btn)
 
         # Add markdown cell button
         self.add_md_btn = QPushButton("+ Markdown")
         self.add_md_btn.setMinimumHeight(24)
-        self.add_md_btn.setStyleSheet(
-            f"""
+        self.add_md_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
                 color: {self.colors['cell_type_markdown']};
@@ -1604,8 +1579,7 @@ class NotebookDockWidget(QDockWidget):
                 font-weight: bold;
             }}
             QPushButton:hover {{ background-color: {self.colors['bg_button']}; }}
-        """
-        )
+        """)
         self.add_md_btn.clicked.connect(
             lambda: self._add_cell_below_focused("markdown")
         )
@@ -1622,8 +1596,7 @@ class NotebookDockWidget(QDockWidget):
             self.snippet_combo = QComboBox()
             self.snippet_combo.setMinimumWidth(250)
             self.snippet_combo.setMaximumWidth(400)
-            self.snippet_combo.setStyleSheet(
-                f"""
+            self.snippet_combo.setStyleSheet(f"""
                 QComboBox {{
                     background-color: {self.colors['bg_button']};
                     color: {self.colors['text_primary']};
@@ -1644,8 +1617,7 @@ class NotebookDockWidget(QDockWidget):
                     border: 1px solid {self.colors['border_focus']};
                     selection-background-color: {self.colors['bg_button_primary']};
                 }}
-            """
-            )
+            """)
 
             # Add placeholder and snippets
             self.snippet_combo.addItem("-- Select a snippet to insert --")
@@ -1687,16 +1659,14 @@ class NotebookDockWidget(QDockWidget):
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
         self.path_edit.setPlaceholderText("No notebook loaded...")
-        self.path_edit.setStyleSheet(
-            f"""
+        self.path_edit.setStyleSheet(f"""
             QLineEdit {{
                 background-color: transparent;
                 color: {self.colors['text_primary']};
                 border: none;
                 font-size: 11px;
             }}
-        """
-        )
+        """)
         path_layout.addWidget(self.path_edit)
 
         main_layout.addWidget(path_widget)
@@ -1704,8 +1674,7 @@ class NotebookDockWidget(QDockWidget):
         # Scroll area for cells
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setStyleSheet(
-            f"""
+        self.scroll_area.setStyleSheet(f"""
             QScrollArea {{
                 background-color: {self.colors['bg_primary']};
                 border: none;
@@ -1723,8 +1692,7 @@ class NotebookDockWidget(QDockWidget):
             QScrollBar::handle:vertical:hover {{
                 background-color: {self.colors['scrollbar_handle_hover']};
             }}
-        """
-        )
+        """)
 
         self.cells_container = QWidget()
         self.cells_container.setStyleSheet(
@@ -1744,8 +1712,7 @@ class NotebookDockWidget(QDockWidget):
         # Status bar
         self.status_bar = QLabel("Ready")
         self.status_bar.setMinimumHeight(28)
-        self.status_bar.setStyleSheet(
-            f"""
+        self.status_bar.setStyleSheet(f"""
             QLabel {{
                 background-color: {self.colors['bg_secondary']};
                 color: {self.colors['text_secondary']};
@@ -1753,8 +1720,7 @@ class NotebookDockWidget(QDockWidget):
                 font-size: 11px;
                 border-top: 1px solid {self.colors['border_primary']};
             }}
-        """
-        )
+        """)
         main_layout.addWidget(self.status_bar)
 
         # Show welcome message
@@ -1765,8 +1731,7 @@ class NotebookDockWidget(QDockWidget):
         # Clear existing cells
         self._clear_cells()
 
-        welcome = QLabel(
-            f"""
+        welcome = QLabel(f"""
             <div style='text-align: center; padding: 40px;'>
                 <h2 style='color: {self.colors['header_accent']};'>QGIS Notebook</h2>
                 <p style='color: {self.colors['text_secondary']}; font-size: 13px;'>
@@ -1794,8 +1759,7 @@ class NotebookDockWidget(QDockWidget):
                     Right-click: Cell menu
                 </p>
             </div>
-        """
-        )
+        """)
         welcome.setAlignment(Qt.AlignCenter)
         welcome.setStyleSheet("background-color: transparent;")
 
@@ -2166,8 +2130,7 @@ class NotebookDockWidget(QDockWidget):
 
         if stderr:
             self.status_bar.setText(f"Cell [{cell_index + 1}] completed with errors")
-            self.status_bar.setStyleSheet(
-                f"""
+            self.status_bar.setStyleSheet(f"""
                 QLabel {{
                     background-color: {self.colors['bg_secondary']};
                     color: {self.colors['text_error']};
@@ -2175,12 +2138,10 @@ class NotebookDockWidget(QDockWidget):
                     font-size: 11px;
                     border-top: 1px solid {self.colors['border_primary']};
                 }}
-            """
-            )
+            """)
         else:
             self.status_bar.setText(f"Cell [{cell_index + 1}] executed successfully")
-            self.status_bar.setStyleSheet(
-                f"""
+            self.status_bar.setStyleSheet(f"""
                 QLabel {{
                     background-color: {self.colors['bg_secondary']};
                     color: {self.colors['text_success']};
@@ -2188,8 +2149,7 @@ class NotebookDockWidget(QDockWidget):
                     font-size: 11px;
                     border-top: 1px solid {self.colors['border_primary']};
                 }}
-            """
-            )
+            """)
 
     def _execute_and_advance(self, cell_index):
         """Execute a cell and move focus to the next cell."""
@@ -2254,8 +2214,7 @@ class NotebookDockWidget(QDockWidget):
             self._is_running_all = False
             self.run_all_btn.setEnabled(True)
             self.status_bar.setText("Finished running all cells")
-            self.status_bar.setStyleSheet(
-                f"""
+            self.status_bar.setStyleSheet(f"""
                 QLabel {{
                     background-color: {self.colors['bg_secondary']};
                     color: {self.colors['text_success']};
@@ -2263,8 +2222,7 @@ class NotebookDockWidget(QDockWidget):
                     font-size: 11px;
                     border-top: 1px solid {self.colors['border_primary']};
                 }}
-            """
-            )
+            """)
             return
 
         cell_index = self._execution_queue.pop(0)
@@ -2284,8 +2242,7 @@ class NotebookDockWidget(QDockWidget):
                 widget.output_area.setVisible(False)
 
         self.status_bar.setText("Outputs cleared")
-        self.status_bar.setStyleSheet(
-            f"""
+        self.status_bar.setStyleSheet(f"""
             QLabel {{
                 background-color: {self.colors['bg_secondary']};
                 color: {self.colors['text_secondary']};
@@ -2293,8 +2250,7 @@ class NotebookDockWidget(QDockWidget):
                 font-size: 11px;
                 border-top: 1px solid {self.colors['border_primary']};
             }}
-        """
-        )
+        """)
 
     def _save_notebook(self):
         """Save the current notebook."""
@@ -2346,8 +2302,7 @@ class NotebookDockWidget(QDockWidget):
             self.path_edit.setText(file_path)
             self._is_dirty = False  # Reset dirty flag after successful save
             self.status_bar.setText(f"Saved: {os.path.basename(file_path)}")
-            self.status_bar.setStyleSheet(
-                f"""
+            self.status_bar.setStyleSheet(f"""
                 QLabel {{
                     background-color: {self.colors['bg_secondary']};
                     color: {self.colors['text_success']};
@@ -2355,8 +2310,7 @@ class NotebookDockWidget(QDockWidget):
                     font-size: 11px;
                     border-top: 1px solid {self.colors['border_primary']};
                 }}
-            """
-            )
+            """)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save notebook:\n{str(e)}")
