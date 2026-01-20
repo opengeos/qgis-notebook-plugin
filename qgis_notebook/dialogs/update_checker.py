@@ -28,7 +28,6 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.PyQt.QtGui import QFont
 
-
 # GitHub URLs for the plugin
 GITHUB_REPO = "opengeos/qgis-notebook-plugin"
 GITHUB_BRANCH = "main"
@@ -237,8 +236,7 @@ class UpdateCheckerDialog(QDialog):
 
         # Version info group
         version_group = QGroupBox("Version Information")
-        version_group.setStyleSheet(
-            """
+        version_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
                 border: 1px solid #3C3F41;
@@ -252,8 +250,7 @@ class UpdateCheckerDialog(QDialog):
                 padding: 0 5px;
                 color: #6897BB;
             }
-        """
-        )
+        """)
         version_layout = QFormLayout(version_group)
 
         self.current_version_label = QLabel(self.current_version)
@@ -284,16 +281,14 @@ class UpdateCheckerDialog(QDialog):
         self.changelog_text.setPlaceholderText(
             "Changelog will appear here after checking for updates..."
         )
-        self.changelog_text.setStyleSheet(
-            """
+        self.changelog_text.setStyleSheet("""
             QTextEdit {
                 background-color: #1E1F22;
                 color: #A9B7C6;
                 border: 1px solid #3C3F41;
                 border-radius: 4px;
             }
-        """
-        )
+        """)
         changelog_layout.addWidget(self.changelog_text)
 
         layout.addWidget(changelog_group)
@@ -301,8 +296,7 @@ class UpdateCheckerDialog(QDialog):
         # Progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
-        self.progress_bar.setStyleSheet(
-            """
+        self.progress_bar.setStyleSheet("""
             QProgressBar {
                 border: 1px solid #3C3F41;
                 border-radius: 4px;
@@ -311,8 +305,7 @@ class UpdateCheckerDialog(QDialog):
             QProgressBar::chunk {
                 background-color: #365880;
             }
-        """
-        )
+        """)
         layout.addWidget(self.progress_bar)
 
         # Progress label
@@ -326,8 +319,7 @@ class UpdateCheckerDialog(QDialog):
         button_layout = QHBoxLayout()
 
         self.check_btn = QPushButton("Check for Updates")
-        self.check_btn.setStyleSheet(
-            """
+        self.check_btn.setStyleSheet("""
             QPushButton {
                 background-color: #365880;
                 color: white;
@@ -338,15 +330,13 @@ class UpdateCheckerDialog(QDialog):
             }
             QPushButton:hover { background-color: #4A6FA5; }
             QPushButton:disabled { background-color: #3C3F41; color: #6E7274; }
-        """
-        )
+        """)
         self.check_btn.clicked.connect(self.check_for_updates)
         button_layout.addWidget(self.check_btn)
 
         self.install_btn = QPushButton("Download and Install")
         self.install_btn.setEnabled(False)
-        self.install_btn.setStyleSheet(
-            """
+        self.install_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3C5F41;
                 color: white;
@@ -356,14 +346,12 @@ class UpdateCheckerDialog(QDialog):
             }
             QPushButton:hover { background-color: #4A7A50; }
             QPushButton:disabled { background-color: #3C3F41; color: #6E7274; }
-        """
-        )
+        """)
         self.install_btn.clicked.connect(self.download_and_install)
         button_layout.addWidget(self.install_btn)
 
         self.close_btn = QPushButton("Close")
-        self.close_btn.setStyleSheet(
-            """
+        self.close_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3C3F41;
                 color: #BCBEC4;
@@ -372,8 +360,7 @@ class UpdateCheckerDialog(QDialog):
                 border-radius: 4px;
             }
             QPushButton:hover { background-color: #4E5254; }
-        """
-        )
+        """)
         self.close_btn.clicked.connect(self.close)
         button_layout.addWidget(self.close_btn)
 

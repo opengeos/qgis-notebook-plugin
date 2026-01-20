@@ -68,8 +68,7 @@ class SettingsDockWidget(QDockWidget):
 
         # Tab widget for organized settings
         tab_widget = QTabWidget()
-        tab_widget.setStyleSheet(
-            """
+        tab_widget.setStyleSheet("""
             QTabWidget::pane {
                 border: 1px solid #3C3F41;
                 border-radius: 4px;
@@ -90,8 +89,7 @@ class SettingsDockWidget(QDockWidget):
             QTabBar::tab:hover {
                 background-color: #4E5254;
             }
-        """
-        )
+        """)
         main_layout.addWidget(tab_widget)
 
         # General settings tab
@@ -110,8 +108,7 @@ class SettingsDockWidget(QDockWidget):
         button_layout = QHBoxLayout()
 
         self.save_btn = QPushButton("Save Settings")
-        self.save_btn.setStyleSheet(
-            """
+        self.save_btn.setStyleSheet("""
             QPushButton {
                 background-color: #365880;
                 color: white;
@@ -121,14 +118,12 @@ class SettingsDockWidget(QDockWidget):
                 font-weight: bold;
             }
             QPushButton:hover { background-color: #4A6FA5; }
-        """
-        )
+        """)
         self.save_btn.clicked.connect(self._save_settings)
         button_layout.addWidget(self.save_btn)
 
         self.reset_btn = QPushButton("Reset Defaults")
-        self.reset_btn.setStyleSheet(
-            """
+        self.reset_btn.setStyleSheet("""
             QPushButton {
                 background-color: #5F3C41;
                 color: white;
@@ -137,8 +132,7 @@ class SettingsDockWidget(QDockWidget):
                 border-radius: 4px;
             }
             QPushButton:hover { background-color: #7A4A50; }
-        """
-        )
+        """)
         self.reset_btn.clicked.connect(self._reset_defaults)
         button_layout.addWidget(self.reset_btn)
 
@@ -161,8 +155,7 @@ class SettingsDockWidget(QDockWidget):
 
         # General options group
         general_group = QGroupBox("General Options")
-        general_group.setStyleSheet(
-            """
+        general_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
                 border: 1px solid #3C3F41;
@@ -176,8 +169,7 @@ class SettingsDockWidget(QDockWidget):
                 padding: 0 5px;
                 color: #6897BB;
             }
-        """
-        )
+        """)
         general_layout = QFormLayout(general_group)
 
         # Auto-save option
@@ -232,8 +224,7 @@ class SettingsDockWidget(QDockWidget):
 
         # Kernel options group
         kernel_group = QGroupBox("Execution Options")
-        kernel_group.setStyleSheet(
-            """
+        kernel_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
                 border: 1px solid #3C3F41;
@@ -247,8 +238,7 @@ class SettingsDockWidget(QDockWidget):
                 padding: 0 5px;
                 color: #6897BB;
             }
-        """
-        )
+        """)
         kernel_layout = QFormLayout(kernel_group)
 
         # Execution timeout
@@ -308,8 +298,7 @@ class SettingsDockWidget(QDockWidget):
 
         # Theme group
         theme_group = QGroupBox("Theme")
-        theme_group.setStyleSheet(
-            """
+        theme_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
                 border: 1px solid #3C3F41;
@@ -323,8 +312,7 @@ class SettingsDockWidget(QDockWidget):
                 padding: 0 5px;
                 color: #6897BB;
             }
-        """
-        )
+        """)
         theme_layout = QFormLayout(theme_group)
 
         # Color scheme
