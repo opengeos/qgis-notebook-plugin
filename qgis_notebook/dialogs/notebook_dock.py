@@ -2160,13 +2160,17 @@ class NotebookDockWidget(QDockWidget):
         cell_index = self._current_cell_index
         if cell_index is None or cell_index >= len(self.cell_widgets):
             self._active_execution = False
-            self.stop_btn.setEnabled(bool(self._is_running_all or self._execution_queue))
+            self.stop_btn.setEnabled(
+                bool(self._is_running_all or self._execution_queue)
+            )
             return
 
         cell_widget = self.cell_widgets[cell_index]
         if not isinstance(cell_widget, NotebookCellWidget):
             self._active_execution = False
-            self.stop_btn.setEnabled(bool(self._is_running_all or self._execution_queue))
+            self.stop_btn.setEnabled(
+                bool(self._is_running_all or self._execution_queue)
+            )
             return
 
         result, stdout, stderr = self._current_execution_result or (None, "", "")
@@ -2202,7 +2206,11 @@ class NotebookDockWidget(QDockWidget):
         callback = self._current_finish_callback
         self._current_finish_callback = None
 
-        self.stop_btn.setEnabled(bool(self._is_running_all or self._execution_queue or self._active_execution))
+        self.stop_btn.setEnabled(
+            bool(
+                self._is_running_all or self._execution_queue or self._active_execution
+            )
+        )
 
         if callable(callback):
             callback()
@@ -2261,7 +2269,11 @@ class NotebookDockWidget(QDockWidget):
 
     def _stop_execution(self):
         """Stop queued cell execution (Run All)."""
-        if not self._active_execution and not self._is_running_all and not self._execution_queue:
+        if (
+            not self._active_execution
+            and not self._is_running_all
+            and not self._execution_queue
+        ):
             self.status_bar.setText("No running execution to stop")
             return
 
