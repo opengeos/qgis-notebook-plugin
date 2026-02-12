@@ -117,7 +117,9 @@ python install.py --remove
 
 1. Click the **▶ Run** button on any code cell to execute it
 2. Use **▶▶ Run All** to execute all cells in order
-3. View output directly below each cell
+3. Use **⏹ Stop** to stop queued *Run All* execution
+4. Use **🔄 Restart Session** to reset the Python namespace and clear outputs
+5. View output directly below each cell
 
 ### Creating a New Notebook
 
