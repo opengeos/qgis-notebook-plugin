@@ -2125,6 +2125,10 @@ class NotebookDockWidget(QDockWidget):
         if not code.strip():
             return
 
+        # Mark execution active so Stop button is available for this run
+        self._is_running_all = True
+        self.stop_btn.setEnabled(True)
+
         cell_widget.set_running(True)
         self.status_bar.setText(f"Executing cell [{cell_index + 1}]...")
 
@@ -2163,6 +2167,14 @@ class NotebookDockWidget(QDockWidget):
                     border-top: 1px solid {self.colors['border_primary']};
                 }}
             """)
+
+        # Keep stop enabled if queue still has items; otherwise reset state.
+        if self._execution_queue:
+            self._is_running_all = True
+            self.stop_btn.setEnabled(True)
+        else:
+            self._is_running_all = False
+            self.stop_btn.setEnabled(False)
 
     def _execute_and_advance(self, cell_index):
         """Execute a cell and move focus to the next cell."""
