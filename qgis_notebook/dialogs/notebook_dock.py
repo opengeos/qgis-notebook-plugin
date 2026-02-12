@@ -1519,12 +1519,6 @@ class NotebookDockWidget(QDockWidget):
         self.run_all_btn.clicked.connect(self._run_all_cells)
         toolbar_layout.addWidget(self.run_all_btn)
 
-        # Stop queue button
-        self.stop_btn = self._create_toolbar_button("Stop", "danger")
-        self.stop_btn.clicked.connect(self._stop_execution)
-        self.stop_btn.setEnabled(False)
-        toolbar_layout.addWidget(self.stop_btn)
-
         # Restart session button
         self.restart_session_btn = self._create_toolbar_button(
             "Restart Session", "normal"
@@ -2125,9 +2119,8 @@ class NotebookDockWidget(QDockWidget):
         if not code.strip():
             return
 
-        # Mark execution active so Stop button is available for this run
+        # Mark execution active for current run
         self._is_running_all = True
-        self.stop_btn.setEnabled(True)
 
         cell_widget.set_running(True)
         self.status_bar.setText(f"Executing cell [{cell_index + 1}]...")
@@ -2168,13 +2161,11 @@ class NotebookDockWidget(QDockWidget):
                 }}
             """)
 
-        # Keep stop enabled if queue still has items; otherwise reset state.
+        # Keep execution state if queue still has items; otherwise reset state.
         if self._execution_queue:
             self._is_running_all = True
-            self.stop_btn.setEnabled(True)
         else:
             self._is_running_all = False
-            self.stop_btn.setEnabled(False)
 
     def _execute_and_advance(self, cell_index):
         """Execute a cell and move focus to the next cell."""
@@ -2227,27 +2218,17 @@ class NotebookDockWidget(QDockWidget):
 
         self._is_running_all = True
         self.run_all_btn.setEnabled(False)
-        self.stop_btn.setEnabled(True)
         self.status_bar.setText(f"Running {len(self._execution_queue)} cells...")
 
         # Start executing the queue
         self._execute_next_in_queue()
 
-    def _stop_execution(self):
-        """Stop queued cell execution (Run All)."""
-        if not self._is_running_all and not self._execution_queue:
-            self.status_bar.setText("No running execution to stop")
-            return
-
+    def _restart_session(self):
+        """Restart Python session by resetting execution namespace and outputs."""
+        # Cancel queued run-all execution
         self._execution_queue = []
         self._is_running_all = False
         self.run_all_btn.setEnabled(True)
-        self.stop_btn.setEnabled(False)
-        self.status_bar.setText("Execution stopped")
-
-    def _restart_session(self):
-        """Restart Python session by resetting execution namespace and outputs."""
-        self._stop_execution()
 
         # Reset namespace
         self.namespace = {"__name__": "__main__", "__doc__": None}
@@ -2270,7 +2251,6 @@ class NotebookDockWidget(QDockWidget):
             # Done with all cells
             self._is_running_all = False
             self.run_all_btn.setEnabled(True)
-            self.stop_btn.setEnabled(False)
             self.status_bar.setText("Finished running all cells")
             self.status_bar.setStyleSheet(f"""
                 QLabel {{
