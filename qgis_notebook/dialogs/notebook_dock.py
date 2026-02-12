@@ -1526,7 +1526,9 @@ class NotebookDockWidget(QDockWidget):
         toolbar_layout.addWidget(self.stop_btn)
 
         # Restart session button
-        self.restart_session_btn = self._create_toolbar_button("Restart Session", "normal")
+        self.restart_session_btn = self._create_toolbar_button(
+            "Restart Session", "normal"
+        )
         self.restart_session_btn.clicked.connect(self._restart_session)
         toolbar_layout.addWidget(self.restart_session_btn)
 
