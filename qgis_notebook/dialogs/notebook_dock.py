@@ -10,6 +10,7 @@ import os
 import sys
 import time
 import traceback
+import threading
 from io import StringIO
 
 from qgis.PyQt.QtCore import (
@@ -1120,6 +1121,11 @@ class NotebookDockWidget(QDockWidget):
         # Execution queue for Run All
         self._execution_queue = []
         self._is_running_all = False
+        self._active_execution = False
+        self._current_execution_thread = None
+        self._current_execution_result = None
+        self._current_cell_index = None
+        self._current_finish_callback = None
 
         # Keyboard shortcut state (for JupyterLab-style shortcuts)
         self._last_d_press_time = 0  # Track time of last 'D' press for D,D shortcut
@@ -2109,8 +2115,11 @@ class NotebookDockWidget(QDockWidget):
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
-    def _execute_cell(self, cell_index):
-        """Execute a specific cell synchronously."""
+    def _execute_cell(self, cell_index, on_finished=None):
+        """Execute a specific code cell asynchronously to keep UI responsive."""
+        if self._active_execution:
+            return
+
         if cell_index >= len(self.cell_widgets):
             return
 
@@ -2125,24 +2134,45 @@ class NotebookDockWidget(QDockWidget):
         if not code.strip():
             return
 
-        # Mark execution active so Stop button is available for this run
-        self._is_running_all = True
-        self.stop_btn.setEnabled(True)
+        self._active_execution = True
+        self._current_execution_result = None
+        self._current_cell_index = cell_index
+        self._current_finish_callback = on_finished
 
+        self.stop_btn.setEnabled(True)
         cell_widget.set_running(True)
         self.status_bar.setText(f"Executing cell [{cell_index + 1}]...")
 
-        # Process events to update UI
-        QApplication.processEvents()
+        def _worker():
+            self._current_execution_result = self._execute_code_sync(code)
 
-        # Execute synchronously
-        result, stdout, stderr = self._execute_code_sync(code)
+        self._current_execution_thread = threading.Thread(target=_worker, daemon=True)
+        self._current_execution_thread.start()
+        QTimer.singleShot(50, self._check_execution_finished)
 
-        # Update cell output
+    def _check_execution_finished(self):
+        """Poll background execution and finalize on the UI thread."""
+        thread = self._current_execution_thread
+        if thread is not None and thread.is_alive():
+            QTimer.singleShot(50, self._check_execution_finished)
+            return
+
+        cell_index = self._current_cell_index
+        if cell_index is None or cell_index >= len(self.cell_widgets):
+            self._active_execution = False
+            self.stop_btn.setEnabled(bool(self._is_running_all or self._execution_queue))
+            return
+
+        cell_widget = self.cell_widgets[cell_index]
+        if not isinstance(cell_widget, NotebookCellWidget):
+            self._active_execution = False
+            self.stop_btn.setEnabled(bool(self._is_running_all or self._execution_queue))
+            return
+
+        result, stdout, stderr = self._current_execution_result or (None, "", "")
+
         cell_widget.set_running(False)
         cell_widget.set_output(result, stdout, stderr)
-
-        # Update namespace for all cells (for autocomplete with newly defined variables)
         self._update_cell_namespaces()
 
         if stderr:
@@ -2168,54 +2198,52 @@ class NotebookDockWidget(QDockWidget):
                 }}
             """)
 
-        # Keep stop enabled if queue still has items; otherwise reset state.
-        if self._execution_queue:
-            self._is_running_all = True
-            self.stop_btn.setEnabled(True)
-        else:
-            self._is_running_all = False
-            self.stop_btn.setEnabled(False)
+        self._active_execution = False
+        callback = self._current_finish_callback
+        self._current_finish_callback = None
+
+        self.stop_btn.setEnabled(bool(self._is_running_all or self._execution_queue or self._active_execution))
+
+        if callable(callback):
+            callback()
 
     def _execute_and_advance(self, cell_index):
         """Execute a cell and move focus to the next cell."""
-        self._execute_cell(cell_index)
 
-        # Focus next cell if it exists
-        next_index = cell_index + 1
-        if next_index < len(self.cell_widgets):
-            next_widget = self.cell_widgets[next_index]
-            if isinstance(next_widget, NotebookCellWidget):
-                # Use QTimer to ensure focus happens after execution completes
-                QTimer.singleShot(50, next_widget.focus_editor)
-        else:
-            # No next cell - create a new code cell
-            self._add_cell_at_end("code")
+        def _after_run():
+            next_index = cell_index + 1
+            if next_index < len(self.cell_widgets):
+                next_widget = self.cell_widgets[next_index]
+                if isinstance(next_widget, NotebookCellWidget):
+                    QTimer.singleShot(50, next_widget.focus_editor)
+            else:
+                self._add_cell_at_end("code")
+
+        self._execute_cell(cell_index, on_finished=_after_run)
 
     def _execute_and_insert(self, cell_index):
         """Execute a cell and insert a new code cell below, moving focus to it."""
-        self._execute_cell(cell_index)
 
-        # Create a new code cell below
-        if not self.notebook_data:
-            return
+        def _after_run():
+            if not self.notebook_data:
+                return
 
-        new_index = cell_index + 1
-        cell_data = self._create_empty_cell("code")
-        self.notebook_data["cells"].insert(new_index, cell_data)
+            new_index = cell_index + 1
+            cell_data = self._create_empty_cell("code")
+            self.notebook_data["cells"].insert(new_index, cell_data)
 
-        new_widget = self._create_cell_widget(cell_data, new_index)
-        self._update_cell_indices()
-        self.status_bar.setText(f"Created new cell [{new_index + 1}]")
+            new_widget = self._create_cell_widget(cell_data, new_index)
+            self._update_cell_indices()
+            self.status_bar.setText(f"Created new cell [{new_index + 1}]")
+            QTimer.singleShot(50, new_widget.focus_editor)
 
-        # Focus the new cell
-        QTimer.singleShot(50, new_widget.focus_editor)
+        self._execute_cell(cell_index, on_finished=_after_run)
 
     def _run_all_cells(self):
         """Run all code cells in order using a queue."""
-        if self._is_running_all:
+        if self._is_running_all or self._active_execution:
             return
 
-        # Build list of code cell indices
         self._execution_queue = []
         for i, widget in enumerate(self.cell_widgets):
             if isinstance(widget, NotebookCellWidget) and widget.cell_type == "code":
@@ -2229,32 +2257,32 @@ class NotebookDockWidget(QDockWidget):
         self.run_all_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self.status_bar.setText(f"Running {len(self._execution_queue)} cells...")
-
-        # Start executing the queue
         self._execute_next_in_queue()
 
     def _stop_execution(self):
         """Stop queued cell execution (Run All)."""
-        if not self._is_running_all and not self._execution_queue:
+        if not self._active_execution and not self._is_running_all and not self._execution_queue:
             self.status_bar.setText("No running execution to stop")
             return
 
         self._execution_queue = []
         self._is_running_all = False
         self.run_all_btn.setEnabled(True)
-        self.stop_btn.setEnabled(False)
-        self.status_bar.setText("Execution stopped")
+        # Current cell execution is synchronous and cannot be force-interrupted safely.
+        self.stop_btn.setEnabled(self._active_execution)
+        if self._active_execution:
+            self.status_bar.setText("Stopping queue... current cell will finish first")
+        else:
+            self.status_bar.setText("Execution stopped")
 
     def _restart_session(self):
         """Restart Python session by resetting execution namespace and outputs."""
         self._stop_execution()
 
-        # Reset namespace
         self.namespace = {"__name__": "__main__", "__doc__": None}
         self._setup_namespace()
         self._update_cell_namespaces()
 
-        # Clear outputs and execution counts
         if self.notebook_data and "cells" in self.notebook_data:
             for cell in self.notebook_data["cells"]:
                 if cell.get("cell_type") == "code":
@@ -2266,11 +2294,15 @@ class NotebookDockWidget(QDockWidget):
 
     def _execute_next_in_queue(self):
         """Execute the next cell in the queue."""
+        if not self._is_running_all:
+            self.run_all_btn.setEnabled(True)
+            self.stop_btn.setEnabled(self._active_execution)
+            return
+
         if not self._execution_queue:
-            # Done with all cells
             self._is_running_all = False
             self.run_all_btn.setEnabled(True)
-            self.stop_btn.setEnabled(False)
+            self.stop_btn.setEnabled(self._active_execution)
             self.status_bar.setText("Finished running all cells")
             self.status_bar.setStyleSheet(f"""
                 QLabel {{
@@ -2284,13 +2316,7 @@ class NotebookDockWidget(QDockWidget):
             return
 
         cell_index = self._execution_queue.pop(0)
-        self._execute_cell(cell_index)
-
-        # Process events and schedule next cell
-        QApplication.processEvents()
-
-        # Use QTimer to schedule next execution to avoid stack overflow
-        QTimer.singleShot(10, self._execute_next_in_queue)
+        self._execute_cell(cell_index, on_finished=self._execute_next_in_queue)
 
     def _clear_outputs(self):
         """Clear all cell outputs."""
