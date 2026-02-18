@@ -125,6 +125,15 @@ python install.py --remove
 2. Start adding code and markdown cells
 3. Save with **💾 Save**
 
+### Context Menu (Right-Click)
+
+Right-click on any cell to access:
+- **Add Code/Markdown Cell Above/Below**
+- **Clear Output** (code cells only)
+- **Convert to Markdown/Code**
+- **Split Cell at Cursor** — splits the cell into two at the current cursor position
+- **Delete Cell**
+
 ### Keyboard Shortcuts
 
 The plugin supports JupyterLab-style keyboard shortcuts for efficient notebook editing.
@@ -150,8 +159,14 @@ To enter command mode, click outside the text editor area of a cell (e.g., on th
 | `D, D` | Delete selected cell (press D twice) |
 | `Y` | Change cell type to Code |
 | `M` | Change cell type to Markdown |
+
+#### Any Mode (works in both edit and command mode)
+
+| Shortcut | Action |
+|----------|--------|
 | `Ctrl+Shift+Up` | Move cell up |
 | `Ctrl+Shift+Down` | Move cell down |
+| `Ctrl+Shift+-` | Split cell at cursor position |
 
 ## Configuration
 
