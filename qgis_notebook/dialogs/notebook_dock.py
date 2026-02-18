@@ -782,6 +782,25 @@ class NotebookCellWidget(QFrame):
                 padding: 4px;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             }}
+            QScrollBar:horizontal {{
+                background-color: {self.colors['bg_code']};
+                height: 10px;
+                border: 1px solid {self.colors['border_primary']};
+                border-top: none;
+                border-bottom-left-radius: 4px;
+                border-bottom-right-radius: 4px;
+            }}
+            QScrollBar::handle:horizontal {{
+                background-color: {self.colors['scrollbar_handle']};
+                border-radius: 4px;
+                min-width: 30px;
+            }}
+            QScrollBar::handle:horizontal:hover {{
+                background-color: {self.colors['scrollbar_handle_hover']};
+            }}
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+                width: 0px;
+            }}
         """)
         # Set up syntax highlighting
         self.highlighter = PythonHighlighter(self.source_edit.document(), self.colors)
