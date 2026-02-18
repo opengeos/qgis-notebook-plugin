@@ -2,7 +2,7 @@
 name=Notebook
 qgisMinimumVersion=3.28
 description=Render and run Jupyter notebooks within QGIS in a dockable panel.
-version=0.5.0
+version=0.6.0
 author=Qiusheng Wu
 email=giswqs@gmail.com
 
@@ -35,6 +35,11 @@ experimental=False
 deprecated=False
 
 changelog=
+    0.6.0
+        - Add support for splitting cells at cursor position (#33)
+        - Add clickable cell type badge to change cell type (#35)
+        - Reduce cell margins and apply cell spacing setting (#36)
+        - Add Restart Session button to clear variables and reset namespace (#37)
     0.5.0
         - Add support for moving cells up and down with a button
     0.4.0
