@@ -686,16 +686,9 @@ class NotebookCellWidget(QFrame):
         )
         header_layout.addWidget(self.index_label)
 
-        self.cell_type_label = QLabel(self.cell_type.upper())
-        cell_type_color = (
-            self.colors["cell_type_code"]
-            if self.cell_type == "code"
-            else self.colors["cell_type_markdown"]
-        )
-        self.cell_type_label.setStyleSheet(
-            f"color: {cell_type_color}; "
-            f"font-size: 10px; padding: 2px 6px; background: {self.colors['bg_button']}; border-radius: 3px;"
-        )
+        self.cell_type_label = QPushButton(self.cell_type.upper())
+        self._update_cell_type_label_style()
+        self.cell_type_label.clicked.connect(self._show_cell_type_menu)
         header_layout.addWidget(self.cell_type_label)
         header_layout.addStretch()
 
@@ -1110,6 +1103,52 @@ class NotebookCellWidget(QFrame):
     def _on_move_down_clicked(self):
         """Handle move down button click."""
         self.move_down_requested.emit(self.cell_index)
+
+    def _update_cell_type_label_style(self):
+        """Update the cell type badge style based on current cell type."""
+        cell_type_color = (
+            self.colors["cell_type_code"]
+            if self.cell_type == "code"
+            else self.colors["cell_type_markdown"]
+        )
+        self.cell_type_label.setStyleSheet(f"""
+            QPushButton {{
+                color: {cell_type_color};
+                font-size: 10px;
+                padding: 2px 6px;
+                background: {self.colors['bg_button']};
+                border-radius: 3px;
+                border: none;
+            }}
+            QPushButton:hover {{
+                background: {self.colors['bg_button_hover']};
+            }}
+        """)
+        self.cell_type_label.setCursor(Qt.PointingHandCursor)
+
+    def _show_cell_type_menu(self):
+        """Show a dropdown menu to change the cell type."""
+        menu = QMenu(self)
+
+        code_action = menu.addAction("Code")
+        markdown_action = menu.addAction("Markdown")
+
+        if self.cell_type == "code":
+            code_action.setEnabled(False)
+        else:
+            markdown_action.setEnabled(False)
+
+        code_action.triggered.connect(
+            lambda: self.change_type_requested.emit(self.cell_index, "code")
+        )
+        markdown_action.triggered.connect(
+            lambda: self.change_type_requested.emit(self.cell_index, "markdown")
+        )
+
+        # Show menu below the badge button
+        menu.exec_(
+            self.cell_type_label.mapToGlobal(self.cell_type_label.rect().bottomLeft())
+        )
 
     def update_index(self, new_index):
         """Update the cell index."""
