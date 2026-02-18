@@ -125,6 +125,10 @@ python install.py --remove
 2. Start adding code and markdown cells
 3. Save with **💾 Save**
 
+### Changing Cell Type
+
+Click the **CODE** or **MARKDOWN** badge in the cell header to switch between code and markdown cell types.
+
 ### Context Menu (Right-Click)
 
 Right-click on any cell to access:
