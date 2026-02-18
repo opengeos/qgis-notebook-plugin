@@ -791,12 +791,12 @@ class NotebookCellWidget(QFrame):
                 border-bottom-right-radius: 4px;
             }}
             QScrollBar::handle:horizontal {{
-                background-color: {self.colors['border_primary']};
+                background-color: {self.colors['scrollbar_handle']};
                 border-radius: 4px;
                 min-width: 30px;
             }}
             QScrollBar::handle:horizontal:hover {{
-                background-color: {self.colors['text_tertiary']};
+                background-color: {self.colors['scrollbar_handle_hover']};
             }}
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
                 width: 0px;
