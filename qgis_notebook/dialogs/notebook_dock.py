@@ -533,6 +533,7 @@ class NotebookCellWidget(QFrame):
     content_changed = pyqtSignal()  # emitted when cell content is modified
     move_up_requested = pyqtSignal(int)  # cell index
     move_down_requested = pyqtSignal(int)  # cell index
+    split_requested = pyqtSignal(int)  # cell index
 
     def __init__(self, cell_data, cell_index, colors, parent=None):
         super().__init__(parent)
@@ -650,6 +651,14 @@ class NotebookCellWidget(QFrame):
             to_code.triggered.connect(
                 lambda: self.change_type_requested.emit(self.cell_index, "code")
             )
+
+        menu.addSeparator()
+
+        # Split cell action
+        split_action = menu.addAction("Split Cell at Cursor")
+        split_action.triggered.connect(
+            lambda: self.split_requested.emit(self.cell_index)
+        )
 
         menu.addSeparator()
 
@@ -1031,6 +1040,28 @@ class NotebookCellWidget(QFrame):
                 return self.markdown_edit.toPlainText()
             return self._source
         return ""
+
+    def get_split_at_cursor(self):
+        """Get the cell source split at the current cursor position.
+
+        Returns:
+            tuple: (text_before_cursor, text_after_cursor). If the editor
+                is not active (e.g. rendered markdown), returns
+                (full_source, "").
+        """
+        if self.cell_type == "code":
+            cursor = self.source_edit.textCursor()
+            pos = cursor.position()
+            text = self.source_edit.toPlainText()
+            return (text[:pos], text[pos:])
+        elif self.cell_type == "markdown":
+            if self._editing_markdown:
+                cursor = self.markdown_edit.textCursor()
+                pos = cursor.position()
+                text = self.markdown_edit.toPlainText()
+                return (text[:pos], text[pos:])
+            return (self._source, "")
+        return ("", "")
 
     def set_output(self, result, stdout, stderr):
         """Set the output of the cell after execution."""
@@ -1843,6 +1874,7 @@ class NotebookDockWidget(QDockWidget):
         cell_widget.move_down_requested.connect(
             self._move_cell_down, Qt.QueuedConnection
         )
+        cell_widget.split_requested.connect(self._split_cell)
 
         # Pass namespace for autocomplete
         cell_widget.set_namespace(self.namespace)
@@ -1995,6 +2027,49 @@ class NotebookDockWidget(QDockWidget):
         QTimer.singleShot(50, new_widget.focus_editor)
 
         return new_widget
+
+    def _split_cell(self, index):
+        """Split a cell at the cursor position.
+
+        Keeps text before the cursor in the current cell and moves
+        text after the cursor into a new cell of the same type below.
+
+        Args:
+            index: The index of the cell to split.
+        """
+        if not self.notebook_data or index >= len(self.cell_widgets):
+            return
+
+        widget = self.cell_widgets[index]
+        text_before, text_after = widget.get_split_at_cursor()
+
+        # Nothing to split if cursor is at the end
+        if not text_after:
+            return
+
+        cell_type = widget.cell_type
+
+        # Update the current cell's text
+        if cell_type == "code":
+            widget.source_edit.setPlainText(text_before)
+        elif cell_type == "markdown" and widget._editing_markdown:
+            widget.markdown_edit.setPlainText(text_before)
+            widget._source = text_before
+        self.notebook_data["cells"][index]["source"] = text_before
+
+        # Create a new cell below with the text after the cursor
+        new_index = index + 1
+        cell_data = self._create_empty_cell(cell_type)
+        cell_data["source"] = text_after
+        self.notebook_data["cells"].insert(new_index, cell_data)
+
+        new_widget = self._create_cell_widget(cell_data, new_index)
+        self._update_cell_indices()
+        self._mark_dirty()
+        self.status_bar.setText(f"Split cell [{index + 1}] at cursor")
+
+        # Focus the new cell's editor
+        QTimer.singleShot(50, new_widget.focus_editor)
 
     def _delete_cell(self, index):
         """Delete a cell at the specified index."""
@@ -2481,8 +2556,11 @@ class NotebookDockWidget(QDockWidget):
             D, D: Delete selected cell (press D twice)
             Y: Change cell type to Code
             M: Change cell type to Markdown
+
+        Shortcuts (work in any mode, including edit mode):
             Ctrl+Shift+Up: Move cell up
             Ctrl+Shift+Down: Move cell down
+            Ctrl+Shift+Minus: Split cell at cursor
 
         Args:
             obj: The object that received the event.
@@ -2520,6 +2598,11 @@ class NotebookDockWidget(QDockWidget):
         # Ctrl+Shift+Down - Move cell down (works in any mode)
         if key == Qt.Key_Down and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
             self._move_cell_down(self._focused_cell_index)
+            return True
+
+        # Ctrl+Shift+Minus - Split cell at cursor (works in any mode)
+        if key == Qt.Key_Minus and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+            self._split_cell(self._focused_cell_index)
             return True
 
         # Single-letter shortcuts only work in command mode (not editing)
