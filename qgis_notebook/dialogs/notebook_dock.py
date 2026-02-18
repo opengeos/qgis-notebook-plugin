@@ -1280,6 +1280,40 @@ class NotebookDockWidget(QDockWidget):
         except ImportError:
             pass
 
+    def _restart_session(self):
+        """Restart the Python session by clearing and reinitializing the namespace."""
+        reply = QMessageBox.question(
+            self,
+            "Restart Session",
+            "This will clear all variables and restart the Python session.\n\n"
+            "Are you sure you want to continue?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        # Clear the namespace
+        self.namespace = {"__name__": "__main__", "__doc__": None}
+
+        # Re-import default modules
+        self._setup_namespace()
+
+        # Update all cells with the new namespace (for autocomplete)
+        self._update_cell_namespaces()
+
+        self.status_bar.setText("Session restarted - all variables cleared")
+        self.status_bar.setStyleSheet(f"""
+            QLabel {{
+                background-color: {self.colors['bg_secondary']};
+                color: {self.colors['text_warning']};
+                padding: 6px 10px;
+                font-size: 11px;
+                border-top: 1px solid {self.colors['border_primary']};
+            }}
+        """)
+
     def _load_theme(self):
         """Load theme colors from settings."""
         # Get color scheme index from settings (0=Dark, 1=Light, 2=Monokai, 3=Solarized Dark)
@@ -1532,6 +1566,10 @@ class NotebookDockWidget(QDockWidget):
             bg_color = self.colors["bg_button_danger"]
             hover_color = self.colors["bg_button_danger_hover"]
             text_color = "#FFFFFF"  # Always white for colored buttons
+        elif button_type == "warning":
+            bg_color = "#E8A838"  # Amber/orange
+            hover_color = "#D4922E"  # Darker amber
+            text_color = "#FFFFFF"
         else:  # normal
             bg_color = self.colors["bg_button"]
             hover_color = self.colors["bg_button_hover"]
@@ -1603,6 +1641,11 @@ class NotebookDockWidget(QDockWidget):
         self.new_btn = self._create_toolbar_button("New", "normal")
         self.new_btn.clicked.connect(self._new_notebook)
         toolbar_layout.addWidget(self.new_btn)
+
+        # Restart session button
+        self.restart_btn = self._create_toolbar_button("Restart", "warning")
+        self.restart_btn.clicked.connect(self._restart_session)
+        toolbar_layout.addWidget(self.restart_btn)
 
         toolbar_layout.addStretch()
         main_layout.addWidget(toolbar_widget)
