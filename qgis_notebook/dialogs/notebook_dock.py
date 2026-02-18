@@ -535,12 +535,16 @@ class NotebookCellWidget(QFrame):
     move_down_requested = pyqtSignal(int)  # cell index
     split_requested = pyqtSignal(int)  # cell index
 
-    def __init__(self, cell_data, cell_index, colors, parent=None):
+    def __init__(
+        self, cell_data, cell_index, colors, cell_spacing=2, cell_radius=6, parent=None
+    ):
         super().__init__(parent)
         self.cell_data = cell_data
         self.cell_index = cell_index
         self.cell_type = cell_data.get("cell_type", "code")
         self.colors = colors
+        self._cell_spacing = cell_spacing
+        self._cell_radius = cell_radius
         self._editing_markdown = False
         self._is_focused = False
         self._is_selected = False  # Track selection state (for command mode)
@@ -554,14 +558,16 @@ class NotebookCellWidget(QFrame):
 
     def _update_style(self):
         """Update the cell's border style based on focus and selection state."""
+        margin = self._cell_spacing // 2
+        radius = self._cell_radius
         if self._is_focused or self._is_selected:
             self.setStyleSheet(f"""
                 NotebookCellWidget {{
                     background-color: {self.colors['bg_cell']};
                     border: 2px solid {self.colors['border_focus']};
-                    border-radius: 6px;
-                    margin: 4px;
-                    padding: 8px;
+                    border-radius: {radius}px;
+                    margin: {margin}px;
+                    padding: 4px;
                 }}
             """)
         else:
@@ -569,9 +575,9 @@ class NotebookCellWidget(QFrame):
                 NotebookCellWidget {{
                     background-color: {self.colors['bg_cell']};
                     border: 1px solid {self.colors['border_primary']};
-                    border-radius: 6px;
-                    margin: 4px;
-                    padding: 8px;
+                    border-radius: {radius}px;
+                    margin: {margin}px;
+                    padding: 4px;
                 }}
             """)
 
@@ -673,8 +679,8 @@ class NotebookCellWidget(QFrame):
     def _setup_ui(self):
         """Set up the cell UI."""
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(8, 8, 8, 8)
-        self.layout.setSpacing(4)
+        self.layout.setContentsMargins(4, 4, 4, 4)
+        self.layout.setSpacing(2)
 
         # Cell header
         header_layout = QHBoxLayout()
@@ -779,7 +785,7 @@ class NotebookCellWidget(QFrame):
                 color: {self.colors['text_code']};
                 border: 1px solid {self.colors['border_primary']};
                 border-radius: 4px;
-                padding: 8px;
+                padding: 4px;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             }}
         """)
@@ -822,7 +828,7 @@ class NotebookCellWidget(QFrame):
                 color: {self.colors['text_output']};
                 border: 1px solid {self.colors['border_primary']};
                 border-radius: 4px;
-                padding: 8px;
+                padding: 4px;
             }}
         """)
         # Start hidden, height will be adjusted dynamically when output is set
@@ -850,7 +856,7 @@ class NotebookCellWidget(QFrame):
         self.markdown_label.setStyleSheet(f"""
             QLabel {{
                 color: {self.colors['text_primary']};
-                padding: 8px;
+                padding: 4px;
                 line-height: 1.5;
                 background-color: {self.colors['bg_code']};
                 border: 1px solid {self.colors['border_primary']};
@@ -872,7 +878,7 @@ class NotebookCellWidget(QFrame):
                 color: {self.colors['text_code']};
                 border: 1px solid {self.colors['border_focus']};
                 border-radius: 4px;
-                padding: 8px;
+                padding: 4px;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             }}
         """)
@@ -1205,6 +1211,12 @@ class NotebookDockWidget(QDockWidget):
 
         # Load theme colors
         self._load_theme()
+
+        # Load cell appearance settings
+        self._cell_spacing = self.settings.value(
+            "QGISNotebook/cell_spacing", 2, type=int
+        )
+        self._cell_radius = self.settings.value("QGISNotebook/cell_radius", 6, type=int)
 
         # Load code snippets (from embedded data)
         self.snippets = SNIPPETS
@@ -1769,8 +1781,8 @@ class NotebookDockWidget(QDockWidget):
             f"background-color: {self.colors['bg_primary']};"
         )
         self.cells_layout = QVBoxLayout(self.cells_container)
-        self.cells_layout.setContentsMargins(8, 8, 8, 8)
-        self.cells_layout.setSpacing(8)
+        self.cells_layout.setContentsMargins(4, 4, 4, 4)
+        self.cells_layout.setSpacing(self._cell_spacing)
         self.cells_layout.addStretch()
 
         self.scroll_area.setWidget(self.cells_container)
@@ -1899,7 +1911,9 @@ class NotebookDockWidget(QDockWidget):
 
     def _create_cell_widget(self, cell_data, index):
         """Create a cell widget and add it to the layout."""
-        cell_widget = NotebookCellWidget(cell_data, index, self.colors)
+        cell_widget = NotebookCellWidget(
+            cell_data, index, self.colors, self._cell_spacing, self._cell_radius
+        )
         cell_widget.executed.connect(self._execute_cell)
         cell_widget.execute_and_advance.connect(self._execute_and_advance)
         cell_widget.execute_and_insert.connect(self._execute_and_insert)
