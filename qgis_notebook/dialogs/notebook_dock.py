@@ -2601,7 +2601,10 @@ class NotebookDockWidget(QDockWidget):
             return True
 
         # Ctrl+Shift+Minus - Split cell at cursor (works in any mode)
-        if key == Qt.Key_Minus and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+        # Qt reports Key_Underscore when Shift+Minus is pressed on most keyboards
+        if key in (Qt.Key_Minus, Qt.Key_Underscore) and modifiers == (
+            Qt.ControlModifier | Qt.ShiftModifier
+        ):
             self._split_cell(self._focused_cell_index)
             return True
 
