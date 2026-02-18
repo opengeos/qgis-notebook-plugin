@@ -248,7 +248,7 @@ class CodeEditor(QPlainTextEdit):
         # Calculate line height from font metrics instead of hardcoding
         font_metrics = self.fontMetrics()
         self._line_height = font_metrics.lineSpacing()
-        self._min_height = self._line_height + 20  # One line plus padding
+        self._min_height = self._line_height + 12  # One line plus padding
         self._max_height = 400
 
     def _on_text_changed(self):
@@ -256,7 +256,7 @@ class CodeEditor(QPlainTextEdit):
         line_count = max(1, self.document().blockCount())
         # Use document margins for more accurate padding calculation
         margins = self.contentsMargins()
-        padding = margins.top() + margins.bottom() + 20  # Add extra buffer for cursor
+        padding = margins.top() + margins.bottom() + 12  # Add extra buffer for cursor
         new_height = min(
             self._max_height,
             max(self._min_height, line_count * self._line_height + padding),
@@ -477,7 +477,7 @@ class MarkdownEditor(QPlainTextEdit):
         # Calculate line height from font metrics instead of hardcoding
         font_metrics = self.fontMetrics()
         self._line_height = font_metrics.lineSpacing()
-        self._min_height = self._line_height + 20  # One line plus padding
+        self._min_height = self._line_height + 12  # One line plus padding
         self._max_height = 300
 
     def _on_text_changed(self):
@@ -485,7 +485,7 @@ class MarkdownEditor(QPlainTextEdit):
         line_count = max(1, self.document().blockCount())
         # Use document margins for more accurate padding calculation
         margins = self.contentsMargins()
-        padding = margins.top() + margins.bottom() + 20  # Add extra buffer for cursor
+        padding = margins.top() + margins.bottom() + 12  # Add extra buffer for cursor
         new_height = min(
             self._max_height,
             max(self._min_height, line_count * self._line_height + padding),
@@ -535,21 +535,19 @@ class NotebookCellWidget(QFrame):
     move_down_requested = pyqtSignal(int)  # cell index
     split_requested = pyqtSignal(int)  # cell index
 
-    def __init__(
-        self, cell_data, cell_index, colors, cell_spacing=2, cell_radius=6, parent=None
-    ):
+    def __init__(self, cell_data, cell_index, colors, parent=None):
         super().__init__(parent)
         self.cell_data = cell_data
         self.cell_index = cell_index
         self.cell_type = cell_data.get("cell_type", "code")
         self.colors = colors
-        self._cell_spacing = cell_spacing
-        self._cell_radius = cell_radius
         self._editing_markdown = False
         self._is_focused = False
         self._is_selected = False  # Track selection state (for command mode)
 
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        # Prevent cell from expanding vertically beyond its content
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         self._update_style()
 
         self._setup_ui()
@@ -558,16 +556,13 @@ class NotebookCellWidget(QFrame):
 
     def _update_style(self):
         """Update the cell's border style based on focus and selection state."""
-        margin = self._cell_spacing // 2
-        radius = self._cell_radius
         if self._is_focused or self._is_selected:
             self.setStyleSheet(f"""
                 NotebookCellWidget {{
                     background-color: {self.colors['bg_cell']};
                     border: 2px solid {self.colors['border_focus']};
-                    border-radius: {radius}px;
-                    margin: {margin}px;
-                    padding: 4px;
+                    border-radius: 6px;
+                    margin: 1px;
                 }}
             """)
         else:
@@ -575,9 +570,8 @@ class NotebookCellWidget(QFrame):
                 NotebookCellWidget {{
                     background-color: {self.colors['bg_cell']};
                     border: 1px solid {self.colors['border_primary']};
-                    border-radius: {radius}px;
-                    margin: {margin}px;
-                    padding: 4px;
+                    border-radius: 6px;
+                    margin: 1px;
                 }}
             """)
 
@@ -1212,12 +1206,6 @@ class NotebookDockWidget(QDockWidget):
         # Load theme colors
         self._load_theme()
 
-        # Load cell appearance settings
-        self._cell_spacing = self.settings.value(
-            "QGISNotebook/cell_spacing", 2, type=int
-        )
-        self._cell_radius = self.settings.value("QGISNotebook/cell_radius", 6, type=int)
-
         # Load code snippets (from embedded data)
         self.snippets = SNIPPETS
 
@@ -1782,14 +1770,15 @@ class NotebookDockWidget(QDockWidget):
         )
         self.cells_layout = QVBoxLayout(self.cells_container)
         self.cells_layout.setContentsMargins(4, 4, 4, 4)
-        self.cells_layout.setSpacing(self._cell_spacing)
+        self.cells_layout.setSpacing(2)
         self.cells_layout.addStretch()
 
         self.scroll_area.setWidget(self.cells_container)
         main_layout.addWidget(self.scroll_area)
 
-        # Install event filter at application level to capture keyboard shortcuts
-        QApplication.instance().installEventFilter(self)
+        # Install event filter on scroll area to capture keyboard shortcuts
+        self.scroll_area.installEventFilter(self)
+        self.scroll_area.setFocusPolicy(Qt.StrongFocus)
 
         # Status bar
         self.status_bar = QLabel("Ready")
@@ -1911,9 +1900,7 @@ class NotebookDockWidget(QDockWidget):
 
     def _create_cell_widget(self, cell_data, index):
         """Create a cell widget and add it to the layout."""
-        cell_widget = NotebookCellWidget(
-            cell_data, index, self.colors, self._cell_spacing, self._cell_radius
-        )
+        cell_widget = NotebookCellWidget(cell_data, index, self.colors)
         cell_widget.executed.connect(self._execute_cell)
         cell_widget.execute_and_advance.connect(self._execute_and_advance)
         cell_widget.execute_and_insert.connect(self._execute_and_insert)
@@ -2493,9 +2480,8 @@ class NotebookDockWidget(QDockWidget):
     def closeEvent(self, event):
         """Handle dock widget close event."""
         # Remove event filter
-        app = QApplication.instance()
-        if app:
-            app.removeEventFilter(self)
+        if hasattr(self, "scroll_area"):
+            self.scroll_area.removeEventFilter(self)
         # Cancel any running execution
         self._execution_queue = []
         self._is_running_all = False
@@ -2622,23 +2608,20 @@ class NotebookDockWidget(QDockWidget):
         Returns:
             bool: True if the event was handled, False otherwise.
         """
+        try:
+            return self._handle_key_event(obj, event)
+        except RuntimeError:
+            # Widget may have been deleted
+            return False
+
+    def _handle_key_event(self, obj, event):
+        """Handle key events for shortcuts."""
         if event.type() != QEvent.KeyPress:
-            return super().eventFilter(obj, event)
+            return False
 
         # Only process if we have a notebook and a focused cell
         if not self.notebook_data or self._focused_cell_index < 0:
-            return super().eventFilter(obj, event)
-
-        # Check if dock widget is visible
-        if not self.isVisible():
-            return super().eventFilter(obj, event)
-
-        # Only process if focus is within this dock widget
-        focus_widget = QApplication.focusWidget()
-        if focus_widget is None:
-            return super().eventFilter(obj, event)
-        if not self.isAncestorOf(focus_widget) and focus_widget is not self:
-            return super().eventFilter(obj, event)
+            return False
 
         key = event.key()
         modifiers = event.modifiers()
@@ -2663,7 +2646,7 @@ class NotebookDockWidget(QDockWidget):
 
         # Single-letter shortcuts only work in command mode (not editing)
         if not self._is_in_command_mode():
-            return super().eventFilter(obj, event)
+            return False
 
         # A - Insert code cell above
         if key == Qt.Key_A and not modifiers:
@@ -2722,4 +2705,4 @@ class NotebookDockWidget(QDockWidget):
                 self.status_bar.setText("Press D again to delete cell")
             return True
 
-        return super().eventFilter(obj, event)
+        return False

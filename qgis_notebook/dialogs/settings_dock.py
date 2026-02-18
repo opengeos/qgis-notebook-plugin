@@ -368,7 +368,7 @@ class SettingsDockWidget(QDockWidget):
         # Cell spacing
         self.cell_spacing_spin = QSpinBox()
         self.cell_spacing_spin.setRange(0, 20)
-        self.cell_spacing_spin.setValue(2)
+        self.cell_spacing_spin.setValue(8)
         self.cell_spacing_spin.setSuffix(" px")
         cell_layout.addRow("Cell spacing:", self.cell_spacing_spin)
 
@@ -456,7 +456,7 @@ class SettingsDockWidget(QDockWidget):
             self.settings.value(f"{self.SETTINGS_PREFIX}line_height", 140, type=int)
         )
         self.cell_spacing_spin.setValue(
-            self.settings.value(f"{self.SETTINGS_PREFIX}cell_spacing", 2, type=int)
+            self.settings.value(f"{self.SETTINGS_PREFIX}cell_spacing", 8, type=int)
         )
         self.cell_radius_spin.setValue(
             self.settings.value(f"{self.SETTINGS_PREFIX}cell_radius", 6, type=int)
@@ -573,7 +573,7 @@ class SettingsDockWidget(QDockWidget):
         self.code_font_combo.setCurrentIndex(0)
         self.font_size_spin.setValue(11)
         self.line_height_spin.setValue(140)
-        self.cell_spacing_spin.setValue(2)
+        self.cell_spacing_spin.setValue(8)
         self.cell_radius_spin.setValue(6)
 
         self.status_label.setText("Defaults restored (not saved)")
