@@ -74,7 +74,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Keywords
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(QColor(colors["syntax_keyword"]))
-        keyword_format.setFontWeight(QFont.Bold)
+        keyword_format.setFontWeight(QFont.Weight.Bold)
         keywords = [
             "and",
             "as",
@@ -236,8 +236,8 @@ class CodeEditor(QPlainTextEdit):
         # Setup autocomplete
         self.completer = QCompleter(self)
         self.completer.setWidget(self)
-        self.completer.setCompletionMode(QCompleter.PopupCompletion)
-        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.completer.activated.connect(self._insert_completion)
 
         # Autocomplete popup styling will be set when colors are available
@@ -312,7 +312,9 @@ class CodeEditor(QPlainTextEdit):
     def _get_word_before_cursor(self):
         """Get the word/expression before the cursor for completion."""
         cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.StartOfBlock, QTextCursor.KeepAnchor)
+        cursor.movePosition(
+            QTextCursor.MoveOperation.StartOfBlock, QTextCursor.MoveMode.KeepAnchor
+        )
         line = cursor.selectedText()
 
         # Find the expression to complete (handles obj.method.attr patterns)
@@ -334,7 +336,9 @@ class CodeEditor(QPlainTextEdit):
 
         # Move cursor back by the length of the prefix and select it
         for _ in range(len(prefix)):
-            cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor)
+            cursor.movePosition(
+                QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor
+            )
 
         # Replace the prefix with the full completion
         cursor.insertText(completion)
@@ -354,7 +358,7 @@ class CodeEditor(QPlainTextEdit):
         """Handle key press events."""
         # If completer popup is visible, handle its keys
         if self.completer.popup().isVisible():
-            if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab):
+            if event.key() in (Qt.Key.Key_Enter, Qt.Key.Key_Return, Qt.Key.Key_Tab):
                 # Accept the completion
                 index = self.completer.popup().currentIndex()
                 if index.isValid():
@@ -363,37 +367,49 @@ class CodeEditor(QPlainTextEdit):
                     )
                 self.completer.popup().hide()
                 return
-            elif event.key() == Qt.Key_Escape:
+            elif event.key() == Qt.Key.Key_Escape:
                 self.completer.popup().hide()
                 return
-            elif event.key() in (Qt.Key_Up, Qt.Key_Down):
+            elif event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down):
                 # Let completer handle navigation - pass event to popup
                 self.completer.popup().keyPressEvent(event)
                 return
-            elif event.key() == Qt.Key_Backspace:
+            elif event.key() == Qt.Key.Key_Backspace:
                 # Handle backspace - let it through, then update completions
                 super().keyPressEvent(event)
                 self._update_completions()
                 return
 
         # Ctrl+Enter: Execute cell
-        if event.key() == Qt.Key_Return and event.modifiers() == Qt.ControlModifier:
+        if (
+            event.key() == Qt.Key.Key_Return
+            and event.modifiers() == Qt.KeyboardModifier.ControlModifier
+        ):
             self.completer.popup().hide()
             self.execute_requested.emit()
             return
         # Shift+Enter: Execute and move to next cell
-        if event.key() == Qt.Key_Return and event.modifiers() == Qt.ShiftModifier:
+        if (
+            event.key() == Qt.Key.Key_Return
+            and event.modifiers() == Qt.KeyboardModifier.ShiftModifier
+        ):
             self.completer.popup().hide()
             self.execute_and_advance.emit()
             return
         # Alt+Enter: Execute and insert new cell below
-        if event.key() == Qt.Key_Return and event.modifiers() == Qt.AltModifier:
+        if (
+            event.key() == Qt.Key.Key_Return
+            and event.modifiers() == Qt.KeyboardModifier.AltModifier
+        ):
             self.completer.popup().hide()
             self.execute_and_insert.emit()
             return
 
         # Ctrl+Space: Trigger autocomplete manually
-        if event.key() == Qt.Key_Space and event.modifiers() == Qt.ControlModifier:
+        if (
+            event.key() == Qt.Key.Key_Space
+            and event.modifiers() == Qt.KeyboardModifier.ControlModifier
+        ):
             self._show_completions()
             return
 
@@ -508,10 +524,13 @@ class MarkdownEditor(QPlainTextEdit):
     def keyPressEvent(self, event):
         """Handle key press events."""
         # Escape or Ctrl+Enter: Finish editing
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self.finish_editing.emit()
             return
-        if event.key() == Qt.Key_Return and event.modifiers() == Qt.ControlModifier:
+        if (
+            event.key() == Qt.Key.Key_Return
+            and event.modifiers() == Qt.KeyboardModifier.ControlModifier
+        ):
             self.finish_editing.emit()
             return
         super().keyPressEvent(event)
@@ -545,13 +564,13 @@ class NotebookCellWidget(QFrame):
         self._is_focused = False
         self._is_selected = False  # Track selection state (for command mode)
 
-        self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         # Prevent cell from expanding vertically beyond its content
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
         self._update_style()
 
         self._setup_ui()
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
 
     def _update_style(self):
@@ -668,7 +687,7 @@ class NotebookCellWidget(QFrame):
             lambda: self.delete_requested.emit(self.cell_index)
         )
 
-        menu.exec_(self.mapToGlobal(pos))
+        menu.exec(self.mapToGlobal(pos))
 
     def _setup_ui(self):
         """Set up the cell UI."""
@@ -865,7 +884,7 @@ class NotebookCellWidget(QFrame):
         # Rendered markdown view (default)
         self.markdown_label = QLabel()
         self.markdown_label.setWordWrap(True)
-        self.markdown_label.setTextFormat(Qt.RichText)
+        self.markdown_label.setTextFormat(Qt.TextFormat.RichText)
         self.markdown_label.setStyleSheet(f"""
             QLabel {{
                 color: {self.colors['text_primary']};
@@ -1143,7 +1162,7 @@ class NotebookCellWidget(QFrame):
                 background: {self.colors['bg_button_hover']};
             }}
         """)
-        self.cell_type_label.setCursor(Qt.PointingHandCursor)
+        self.cell_type_label.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def _show_cell_type_menu(self):
         """Show a dropdown menu to change the cell type."""
@@ -1165,7 +1184,7 @@ class NotebookCellWidget(QFrame):
         )
 
         # Show menu below the badge button
-        menu.exec_(
+        menu.exec(
             self.cell_type_label.mapToGlobal(self.cell_type_label.rect().bottomLeft())
         )
 
@@ -1196,7 +1215,9 @@ class NotebookDockWidget(QDockWidget):
         self.iface = iface
         self.settings = QSettings()
 
-        self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        self.setAllowedAreas(
+            Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
+        )
         self.setMinimumWidth(450)
 
         # Notebook state
@@ -1306,11 +1327,11 @@ class NotebookDockWidget(QDockWidget):
             "Restart Session",
             "This will clear all variables and restart the Python session.\n\n"
             "Are you sure you want to continue?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return
 
         # Clear the namespace
@@ -1549,14 +1570,16 @@ class NotebookDockWidget(QDockWidget):
             self,
             "Unsaved Changes",
             "The current notebook has unsaved changes.\n\nDo you want to save before continuing?",
-            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-            QMessageBox.Save,
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
         )
 
-        if reply == QMessageBox.Save:
+        if reply == QMessageBox.StandardButton.Save:
             saved = self._save_notebook()
             return bool(saved)
-        elif reply == QMessageBox.Discard:
+        elif reply == QMessageBox.StandardButton.Discard:
             return True
         else:  # Cancel
             return False
@@ -1569,7 +1592,7 @@ class NotebookDockWidget(QDockWidget):
             button_type: Type of button (normal, primary, success, danger)
         """
         btn = QPushButton(text)
-        btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         btn.setMinimumHeight(28)
 
         # Determine colors based on button type
@@ -1840,7 +1863,7 @@ class NotebookDockWidget(QDockWidget):
 
         # Install event filter on scroll area to capture keyboard shortcuts
         self.scroll_area.installEventFilter(self)
-        self.scroll_area.setFocusPolicy(Qt.StrongFocus)
+        self.scroll_area.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         # Status bar
         self.status_bar = QLabel("Ready")
@@ -1893,7 +1916,7 @@ class NotebookDockWidget(QDockWidget):
                 </p>
             </div>
         """)
-        welcome.setAlignment(Qt.AlignCenter)
+        welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
         welcome.setStyleSheet("background-color: transparent;")
 
         # Insert before the stretch
@@ -1972,9 +1995,11 @@ class NotebookDockWidget(QDockWidget):
         cell_widget.change_type_requested.connect(self._change_cell_type)
         cell_widget.cell_focused.connect(self._on_cell_focused)
         cell_widget.content_changed.connect(self._mark_dirty)
-        cell_widget.move_up_requested.connect(self._move_cell_up, Qt.QueuedConnection)
+        cell_widget.move_up_requested.connect(
+            self._move_cell_up, Qt.ConnectionType.QueuedConnection
+        )
         cell_widget.move_down_requested.connect(
-            self._move_cell_down, Qt.QueuedConnection
+            self._move_cell_down, Qt.ConnectionType.QueuedConnection
         )
         cell_widget.split_requested.connect(self._split_cell)
 
@@ -2183,11 +2208,11 @@ class NotebookDockWidget(QDockWidget):
             self,
             "Delete Cell",
             f"Are you sure you want to delete cell [{index + 1}]?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return
 
         # Remove from notebook data
@@ -2678,7 +2703,7 @@ class NotebookDockWidget(QDockWidget):
 
     def _handle_key_event(self, obj, event):
         """Handle key events for shortcuts."""
-        if event.type() != QEvent.KeyPress:
+        if event.type() != QEvent.Type.KeyPress:
             return False
 
         # Only process if we have a notebook and a focused cell
@@ -2689,19 +2714,23 @@ class NotebookDockWidget(QDockWidget):
         modifiers = event.modifiers()
 
         # Ctrl+Shift+Up - Move cell up (works in any mode)
-        if key == Qt.Key_Up and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+        if key == Qt.Key.Key_Up and modifiers == (
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+        ):
             self._move_cell_up(self._focused_cell_index)
             return True
 
         # Ctrl+Shift+Down - Move cell down (works in any mode)
-        if key == Qt.Key_Down and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+        if key == Qt.Key.Key_Down and modifiers == (
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+        ):
             self._move_cell_down(self._focused_cell_index)
             return True
 
         # Ctrl+Shift+Minus - Split cell at cursor (works in any mode)
         # Qt reports Key_Underscore when Shift+Minus is pressed on most keyboards
-        if key in (Qt.Key_Minus, Qt.Key_Underscore) and modifiers == (
-            Qt.ControlModifier | Qt.ShiftModifier
+        if key in (Qt.Key.Key_Minus, Qt.Key.Key_Underscore) and modifiers == (
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
         ):
             self._split_cell(self._focused_cell_index)
             return True
@@ -2711,17 +2740,17 @@ class NotebookDockWidget(QDockWidget):
             return False
 
         # A - Insert code cell above
-        if key == Qt.Key_A and not modifiers:
+        if key == Qt.Key.Key_A and not modifiers:
             self._add_cell_above(self._focused_cell_index, "code")
             return True
 
         # B - Insert code cell below
-        if key == Qt.Key_B and not modifiers:
+        if key == Qt.Key.Key_B and not modifiers:
             self._add_cell_below(self._focused_cell_index, "code")
             return True
 
         # Y - Change cell type to Code
-        if key == Qt.Key_Y and not modifiers:
+        if key == Qt.Key.Key_Y and not modifiers:
             if self._focused_cell_index < len(self.cell_widgets):
                 widget = self.cell_widgets[self._focused_cell_index]
                 if widget.cell_type != "code":
@@ -2729,7 +2758,7 @@ class NotebookDockWidget(QDockWidget):
             return True
 
         # M - Change cell type to Markdown
-        if key == Qt.Key_M and not modifiers:
+        if key == Qt.Key.Key_M and not modifiers:
             if self._focused_cell_index < len(self.cell_widgets):
                 widget = self.cell_widgets[self._focused_cell_index]
                 if widget.cell_type != "markdown":
@@ -2737,7 +2766,7 @@ class NotebookDockWidget(QDockWidget):
             return True
 
         # X - Cut selected cell
-        if key == Qt.Key_X and not modifiers:
+        if key == Qt.Key.Key_X and not modifiers:
             if self._focused_cell_index < len(self.cell_widgets):
                 # Store cell data for potential paste
                 widget = self.cell_widgets[self._focused_cell_index]
@@ -2755,7 +2784,7 @@ class NotebookDockWidget(QDockWidget):
             return True
 
         # D, D - Delete selected cell (press D twice within 500ms)
-        if key == Qt.Key_D and not modifiers:
+        if key == Qt.Key.Key_D and not modifiers:
             current_time = time.time()
             if current_time - self._last_d_press_time < 0.5:
                 # Second D press within 500ms - delete the cell

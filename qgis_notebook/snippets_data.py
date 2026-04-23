@@ -94,7 +94,7 @@ layer.selectedFeatureCount()""",
     },
     {
         "title": "16. Add a Field",
-        "code": """from PyQt5.QtCore import QVariant
+        "code": """from qgis.PyQt.QtCore import QVariant
 
 layer.startEditing()
 
@@ -117,7 +117,7 @@ layer.commitChanges()""",
     },
     {
         "title": "18. Change Single Symbol Color",
-        "code": """from PyQt5.QtGui import QColor
+        "code": """from qgis.PyQt.QtGui import QColor
 
 symbol = layer.renderer().symbol()
 symbol.setColor(QColor("red"))
@@ -221,7 +221,7 @@ rlayer.triggerRepaint()""",
     },
     {
         "title": "28. Export Map as Image",
-        "code": """from PyQt5.QtCore import QSize
+        "code": """from qgis.PyQt.QtCore import QSize
 
 settings = QgsMapSettings()
 settings.setLayers([layer])

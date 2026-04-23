@@ -65,7 +65,7 @@ class QGISNotebook:
         action.setEnabled(enabled_flag)
         action.setCheckable(checkable)
         # Prevent macOS from moving this action to the application menu
-        action.setMenuRole(QAction.NoRole)
+        action.setMenuRole(QAction.MenuRole.NoRole)
 
         if status_tip is not None:
             action.setStatusTip(status_tip)
@@ -191,7 +191,9 @@ class QGISNotebook:
                 self._notebook_dock.visibilityChanged.connect(
                     self._on_notebook_visibility_changed
                 )
-                self.iface.addDockWidget(Qt.RightDockWidgetArea, self._notebook_dock)
+                self.iface.addDockWidget(
+                    Qt.DockWidgetArea.RightDockWidgetArea, self._notebook_dock
+                )
                 self._notebook_dock.show()
                 self._notebook_dock.raise_()
                 return
@@ -229,7 +231,9 @@ class QGISNotebook:
                 self._settings_dock.visibilityChanged.connect(
                     self._on_settings_visibility_changed
                 )
-                self.iface.addDockWidget(Qt.RightDockWidgetArea, self._settings_dock)
+                self.iface.addDockWidget(
+                    Qt.DockWidgetArea.RightDockWidgetArea, self._settings_dock
+                )
                 self._settings_dock.show()
                 self._settings_dock.raise_()
                 return
@@ -316,7 +320,7 @@ class QGISNotebook:
 
         try:
             dialog = UpdateCheckerDialog(self.plugin_dir, self.iface.mainWindow())
-            dialog.exec_()
+            dialog.exec()
         except Exception as e:
             QMessageBox.critical(
                 self.iface.mainWindow(),
