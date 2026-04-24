@@ -36,6 +36,18 @@ METADATA_URL = f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}
 ZIP_URL = f"https://github.com/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip"
 
 
+def _require_https(url):
+    """Reject anything that isn't an https:// URL.
+
+    Guards urllib.request.urlopen/urlretrieve against file:/, ftp:, and
+    custom schemes (Bandit B310). The update checker only ever talks to
+    GitHub, so https is the only scheme we expect.
+    """
+    if not isinstance(url, str) or not url.startswith("https://"):
+        raise ValueError(f"Refusing to open non-https URL: {url!r}")
+    return url
+
+
 class VersionCheckWorker(QThread):
     """Worker thread for checking the latest version from GitHub."""
 
@@ -45,7 +57,11 @@ class VersionCheckWorker(QThread):
     def run(self):
         """Fetch the latest metadata from GitHub."""
         try:
-            with urlopen(METADATA_URL, timeout=15) as response:
+            # Scheme is validated in _require_https() above, so the B310
+            # warning about file:/ or custom schemes does not apply here.
+            with urlopen(
+                _require_https(METADATA_URL), timeout=15
+            ) as response:  # nosec B310
                 content = response.read().decode("utf-8")
 
             # Parse version from metadata
@@ -106,7 +122,8 @@ class DownloadWorker(QThread):
                     percent = min(int((downloaded / total_size) * 50), 50)
                     self.progress.emit(10 + percent, "Downloading...")
 
-            urlretrieve(ZIP_URL, zip_path, reporthook)
+            # Scheme validated; see B310 note above.
+            urlretrieve(_require_https(ZIP_URL), zip_path, reporthook)  # nosec B310
 
             self.progress.emit(60, "Extracting files...")
 

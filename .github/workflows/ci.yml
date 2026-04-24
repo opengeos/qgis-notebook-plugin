@@ -17,6 +17,19 @@ jobs:
                   python-version: "3.13"
             - uses: pre-commit/action@v3.0.1
 
+    bandit:
+        name: Bandit security scan
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-python@v6
+              with:
+                  python-version: "3.13"
+            - name: Install Bandit
+              run: pip install bandit
+            - name: Run Bandit (matches plugins.qgis.org security scan)
+              run: bandit -r qgis_notebook
+
     pyqt6-smoke:
         name: PyQt6 import smoke
         runs-on: ubuntu-latest
