@@ -292,22 +292,40 @@ class CodeEditor(QPlainTextEdit):
         """)
 
     def _get_completions(self, obj_name):
-        """Get completions for an object."""
-        try:
-            # Try to evaluate the object name in the namespace
-            if "." in obj_name:
-                parts = obj_name.rsplit(".", 1)
-                base = parts[0]
-                obj = eval(base, self.namespace)
-            else:
-                obj = eval(obj_name, self.namespace)
+        """Get completions for an object.
 
-            # Get attributes
+        Resolves obj_name as a dotted attribute chain starting from the
+        notebook namespace. Uses plain dict lookup + getattr rather than
+        eval() so autocomplete cannot be used to execute arbitrary code as
+        the user types.
+        """
+        try:
+            if "." in obj_name:
+                base_name, _, _ = obj_name.rpartition(".")
+                obj = self._resolve_dotted(base_name)
+            else:
+                obj = self.namespace.get(obj_name)
+
+            if obj is None:
+                return []
+
             attrs = dir(obj)
-            # Filter out private attributes unless user typed underscore
             return [a for a in attrs if not a.startswith("_")]
-        except:
+        except Exception:
             return []
+
+    def _resolve_dotted(self, dotted_name):
+        """Walk a dotted attribute chain without eval().
+
+        Returns None if any segment of the chain is missing.
+        """
+        parts = dotted_name.split(".")
+        obj = self.namespace.get(parts[0])
+        for part in parts[1:]:
+            if obj is None:
+                return None
+            obj = getattr(obj, part, None)
+        return obj
 
     def _get_word_before_cursor(self):
         """Get the word/expression before the cursor for completion."""
@@ -2271,7 +2289,15 @@ class NotebookDockWidget(QDockWidget):
             return {"cell_type": "markdown", "metadata": {}, "source": ""}
 
     def _execute_code_sync(self, code):
-        """Execute code synchronously and return result, stdout, stderr."""
+        """Execute code synchronously and return result, stdout, stderr.
+
+        Security note: this plugin is a Jupyter-notebook runner; executing
+        user-authored Python is the feature, not a vulnerability. The
+        namespace is the plugin-local one (``self.namespace``), not builtins,
+        and execution happens only in response to the user running a cell
+        they just typed. The Bandit B307/B102 suppressions below are
+        intentional and documented per QGIS plugin security-scan guidance.
+        """
         old_stdout = sys.stdout
         old_stderr = sys.stderr
         sys.stdout = StringIO()
@@ -2279,12 +2305,14 @@ class NotebookDockWidget(QDockWidget):
 
         result = None
         try:
-            # Try to evaluate as expression first (to get return value)
+            # Try to evaluate as expression first (to get return value).
+            # Executing user-authored notebook code is the feature of this
+            # plugin; see the method docstring for the security rationale.
             try:
-                result = eval(code, self.namespace)
+                result = eval(code, self.namespace)  # nosec B307
             except SyntaxError:
                 # If not an expression, execute as statements
-                exec(code, self.namespace)
+                exec(code, self.namespace)  # nosec B102
 
             stdout = sys.stdout.getvalue()
             stderr = sys.stderr.getvalue()
