@@ -214,7 +214,7 @@ canvas = iface.mapCanvas()
 
 ## Requirements
 
-- QGIS 3.28 or later
+- QGIS 3.28 or later (compatible with QGIS 4.0, which uses Qt6)
 - Python 3.10 or later (included with QGIS)
 
 ## Update Checker
