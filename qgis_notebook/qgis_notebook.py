@@ -11,9 +11,9 @@ from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolBar, QMessageBox
 
-
 TOOLBAR_OBJECT_NAME = "QGISNotebookToolbar"
 MENU_TITLE = "&Notebook"
+
 
 class QGISNotebook:
     """QGIS Notebook implementation class for QGIS."""
@@ -157,7 +157,6 @@ class QGISNotebook:
             status_tip="About QGIS Notebook",
             parent=self.iface.mainWindow(),
         )
-
 
     def _remove_toolbar(self, toolbar):
         """Detach and schedule deletion of a plugin toolbar widget."""
