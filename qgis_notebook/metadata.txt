@@ -3,7 +3,7 @@ name=Notebook
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Render and run Jupyter notebooks within QGIS in a dockable panel.
-version=0.7.1
+version=0.7.2
 author=Qiusheng Wu
 email=giswqs@gmail.com
 
@@ -36,6 +36,8 @@ experimental=False
 deprecated=False
 
 changelog=
+    0.7.2
+        - Fix print() output of QGIS objects showing as blank lines (#50)
     0.7.1
         - Address plugins.qgis.org Bandit security-scan findings
         - Replace eval() in autocomplete with a safe dotted-attribute walk
