@@ -325,9 +325,7 @@ class QGISNotebook:
                 self._settings_dock.visibilityChanged.connect(
                     self._on_settings_visibility_changed
                 )
-                self._settings_dock.settings_changed.connect(
-                    self._on_settings_changed
-                )
+                self._settings_dock.settings_changed.connect(self._on_settings_changed)
                 self.iface.addDockWidget(
                     Qt.DockWidgetArea.RightDockWidgetArea, self._settings_dock
                 )
