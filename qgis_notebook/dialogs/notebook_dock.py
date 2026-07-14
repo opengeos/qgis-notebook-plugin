@@ -228,6 +228,7 @@ class CodeEditor(QPlainTextEdit):
     execute_and_insert = pyqtSignal()  # Alt+Enter
     focus_changed = pyqtSignal(bool)  # True when focused, False when unfocused
     height_changed = pyqtSignal()  # Emitted when content changes height
+    command_mode_requested = pyqtSignal()  # Escape - leave edit mode
 
     def __init__(self, namespace=None, parent=None):
         super().__init__(parent)
@@ -398,6 +399,12 @@ class CodeEditor(QPlainTextEdit):
                 super().keyPressEvent(event)
                 self._update_completions()
                 return
+
+        # Escape: leave edit mode and switch to command mode
+        if event.key() == Qt.Key.Key_Escape:
+            self.completer.popup().hide()
+            self.command_mode_requested.emit()
+            return
 
         # Ctrl+Enter: Execute cell
         if (
@@ -572,6 +579,7 @@ class NotebookCellWidget(QFrame):
     move_up_requested = pyqtSignal(int)  # cell index
     move_down_requested = pyqtSignal(int)  # cell index
     split_requested = pyqtSignal(int)  # cell index
+    command_mode_requested = pyqtSignal(int)  # cell index - Escape to command mode
 
     def __init__(self, cell_data, cell_index, colors, parent=None):
         super().__init__(parent)
@@ -902,6 +910,11 @@ class NotebookCellWidget(QFrame):
         # Connect focus tracking
         self.source_edit.focus_changed.connect(self.set_focused)
 
+        # Escape leaves edit mode and enters command mode
+        self.source_edit.command_mode_requested.connect(
+            lambda: self.command_mode_requested.emit(self.cell_index)
+        )
+
         # Connect content change tracking
         self.source_edit.textChanged.connect(self.content_changed.emit)
 
@@ -1009,6 +1022,9 @@ class NotebookCellWidget(QFrame):
         self.markdown_label.setText(html)
         self.markdown_edit.setVisible(False)
         self.markdown_label.setVisible(True)
+        # Rendering a markdown cell (via Escape/Ctrl+Enter) returns to command
+        # mode, matching Jupyter's behavior.
+        self.command_mode_requested.emit(self.cell_index)
 
     def _markdown_to_html(self, text):
         """Convert markdown to simple HTML."""
@@ -2127,6 +2143,7 @@ class NotebookDockWidget(QDockWidget):
             self._move_cell_down, Qt.ConnectionType.QueuedConnection
         )
         cell_widget.split_requested.connect(self._split_cell)
+        cell_widget.command_mode_requested.connect(self._enter_command_mode)
 
         # Pass namespace for autocomplete
         cell_widget.set_namespace(self.namespace)
@@ -2144,6 +2161,44 @@ class NotebookDockWidget(QDockWidget):
         for i, widget in enumerate(self.cell_widgets):
             if isinstance(widget, NotebookCellWidget):
                 widget.set_selected(i == cell_index)
+
+    def _update_selection(self, index):
+        """Highlight ``index`` as the selected (command-mode) cell."""
+        for i, widget in enumerate(self.cell_widgets):
+            if isinstance(widget, NotebookCellWidget):
+                widget.set_selected(i == index)
+
+    def _enter_command_mode(self, cell_index=None):
+        """Leave edit mode and give keyboard focus to the notebook.
+
+        Moving focus to the scroll area is what makes the command-mode
+        shortcuts (a/b/m/y/dd/arrows/enter) reach ``eventFilter`` reliably.
+        """
+        if cell_index is not None:
+            self._focused_cell_index = cell_index
+        self._update_selection(self._focused_cell_index)
+        self.scroll_area.setFocus()
+
+    def _enter_edit_mode(self):
+        """Enter edit mode by focusing the selected cell's editor (Enter)."""
+        if 0 <= self._focused_cell_index < len(self.cell_widgets):
+            widget = self.cell_widgets[self._focused_cell_index]
+            if isinstance(widget, NotebookCellWidget):
+                widget.focus_editor()
+
+    def _select_cell(self, index):
+        """Move the command-mode selection to ``index`` (Up/Down arrows)."""
+        if not self.cell_widgets:
+            return
+        index = max(0, min(index, len(self.cell_widgets) - 1))
+        widget = self.cell_widgets[index]
+        if not isinstance(widget, NotebookCellWidget):
+            return
+        self._focused_cell_index = index
+        self._update_selection(index)
+        # Keep focus on the notebook and scroll the cell into view.
+        self.scroll_area.setFocus()
+        self.scroll_area.ensureWidgetVisible(widget)
 
     def _update_cell_indices(self):
         """Update all cell indices after adding/removing cells."""
@@ -2810,12 +2865,17 @@ class NotebookDockWidget(QDockWidget):
         """Filter events to capture keyboard shortcuts for cell operations.
 
         Shortcuts (only active in command mode, when not editing a cell):
+            Enter: Enter edit mode on the selected cell
+            Up: Move selection to the previous cell
+            Down: Move selection to the next cell
             A: Insert code cell above
             B: Insert code cell below
             X: Cut selected cell
             D, D: Delete selected cell (press D twice)
             Y: Change cell type to Code
             M: Change cell type to Markdown
+
+        (Escape enters command mode; it is handled in the cell editors.)
 
         Shortcuts (work in any mode, including edit mode):
             Ctrl+Shift+Up: Move cell up
@@ -2869,9 +2929,24 @@ class NotebookDockWidget(QDockWidget):
             self._split_cell(self._focused_cell_index)
             return True
 
-        # Single-letter shortcuts only work in command mode (not editing)
+        # The shortcuts below only work in command mode (not editing)
         if not self._is_in_command_mode():
             return False
+
+        # Enter - enter edit mode on the selected cell
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not modifiers:
+            self._enter_edit_mode()
+            return True
+
+        # Up - move selection to the previous cell
+        if key == Qt.Key.Key_Up and not modifiers:
+            self._select_cell(self._focused_cell_index - 1)
+            return True
+
+        # Down - move selection to the next cell
+        if key == Qt.Key.Key_Down and not modifiers:
+            self._select_cell(self._focused_cell_index + 1)
+            return True
 
         # A - Insert code cell above
         if key == Qt.Key.Key_A and not modifiers:

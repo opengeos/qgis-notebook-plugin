@@ -3,7 +3,7 @@ name=Notebook
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Render and run Jupyter notebooks within QGIS in a dockable panel.
-version=0.7.3
+version=0.8.0
 author=Qiusheng Wu
 email=giswqs@gmail.com
 
@@ -36,6 +36,11 @@ experimental=False
 deprecated=False
 
 changelog=
+    0.8.0
+        - Add JupyterLab-style command mode: Escape leaves edit mode, Enter
+          re-enters it, and Up/Down move the cell selection (#52)
+        - Make the a/b/m/y/dd command-mode shortcuts fire reliably by keeping
+          keyboard focus on the notebook (#52)
     0.7.3
         - Apply color scheme changes immediately without reopening the panel (#53)
         - Fix invisible (black-on-black) cell context menu text (#53)
