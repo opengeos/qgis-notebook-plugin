@@ -5,6 +5,7 @@ This module provides the main dockable panel for rendering and executing
 Jupyter notebooks within QGIS.
 """
 
+import html
 import json
 import os
 import sys
@@ -1055,7 +1056,9 @@ class NotebookCellWidget(QFrame):
                 text = output.get("text", [])
                 if isinstance(text, list):
                     text = "".join(text)
-                output_text.append(text)
+                # Escape so object reprs like "<QgsField: ...>" are not
+                # swallowed as HTML tags by the rich-text widget.
+                output_text.append(html.escape(text))
 
             elif output_type in ("execute_result", "display_data"):
                 data = output.get("data", {})
@@ -1063,13 +1066,14 @@ class NotebookCellWidget(QFrame):
                     text = data["text/plain"]
                     if isinstance(text, list):
                         text = "".join(text)
-                    output_text.append(text)
+                    output_text.append(html.escape(text))
 
             elif output_type == "error":
                 ename = output.get("ename", "Error")
                 evalue = output.get("evalue", "")
                 output_text.append(
-                    f"<span style='color:{self.colors['text_error']};'>{ename}: {evalue}</span>"
+                    f"<span style='color:{self.colors['text_error']};'>"
+                    f"{html.escape(f'{ename}: {evalue}')}</span>"
                 )
 
         if output_text:
@@ -1120,17 +1124,21 @@ class NotebookCellWidget(QFrame):
         output_parts = []
 
         if stdout:
-            # Strip trailing newline to avoid extra blank line
-            output_parts.append(stdout.rstrip("\n"))
+            # Strip trailing newline to avoid extra blank line. Escape so that
+            # object reprs like "<QgsField: name (type)>" are shown literally
+            # instead of being swallowed as HTML tags by the rich-text widget.
+            output_parts.append(html.escape(stdout.rstrip("\n")))
 
         if result is not None:
             output_parts.append(
-                f"<span style='color:{self.colors['text_output']};'>{repr(result)}</span>"
+                f"<span style='color:{self.colors['text_output']};'>"
+                f"{html.escape(repr(result))}</span>"
             )
 
         if stderr:
             output_parts.append(
-                f"<span style='color:{self.colors['text_error']};'>{stderr}</span>"
+                f"<span style='color:{self.colors['text_error']};'>"
+                f"{html.escape(stderr)}</span>"
             )
 
         if output_parts:
