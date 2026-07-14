@@ -582,6 +582,9 @@ class NotebookCellWidget(QFrame):
         self._editing_markdown = False
         self._is_focused = False
         self._is_selected = False  # Track selection state (for command mode)
+        # Last (result, stdout, stderr) shown, so it can be restored when the
+        # notebook is rebuilt (e.g. after a color-scheme change).
+        self._last_output = None
 
         self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         # Prevent cell from expanding vertically beyond its content
@@ -639,13 +642,48 @@ class NotebookCellWidget(QFrame):
 
     def _clear_cell_output(self):
         """Clear the output of this cell."""
+        self._last_output = None
         if self.cell_type == "code" and hasattr(self, "output_area"):
             self.output_area.clear()
             self.output_area.setVisible(False)
 
+    def _menu_stylesheet(self):
+        """Return a QMenu stylesheet using the current theme colors.
+
+        Without an explicit stylesheet the menu inherits colors from the
+        styled cell frame, which can render text the same color as the
+        background (invisible until hovered).
+        """
+        return f"""
+            QMenu {{
+                background-color: {self.colors['bg_secondary']};
+                color: {self.colors['text_primary']};
+                border: 1px solid {self.colors['border_primary']};
+                padding: 4px;
+            }}
+            QMenu::item {{
+                background-color: transparent;
+                color: {self.colors['text_primary']};
+                padding: 5px 24px;
+            }}
+            QMenu::item:selected {{
+                background-color: {self.colors['bg_button_hover']};
+                color: {self.colors['text_primary']};
+            }}
+            QMenu::item:disabled {{
+                color: {self.colors['text_tertiary']};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background-color: {self.colors['border_primary']};
+                margin: 4px 8px;
+            }}
+        """
+
     def _show_context_menu(self, pos):
         """Show context menu for cell operations."""
         menu = QMenu(self)
+        menu.setStyleSheet(self._menu_stylesheet())
 
         # Add cell actions
         add_code_above = menu.addAction("Add Code Cell Above")
@@ -1118,6 +1156,10 @@ class NotebookCellWidget(QFrame):
 
     def set_output(self, result, stdout, stderr):
         """Set the output of the cell after execution."""
+        # Remember the raw output so it can be restored if the cell widget is
+        # rebuilt (e.g. when the color scheme changes).
+        self._last_output = (result, stdout, stderr)
+
         # Clear previous output first
         self.output_area.clear()
 
@@ -1193,6 +1235,7 @@ class NotebookCellWidget(QFrame):
     def _show_cell_type_menu(self):
         """Show a dropdown menu to change the cell type."""
         menu = QMenu(self)
+        menu.setStyleSheet(self._menu_stylesheet())
 
         code_action = menu.addAction("Code")
         markdown_action = menu.addAction("Markdown")
@@ -1570,6 +1613,56 @@ class NotebookDockWidget(QDockWidget):
                 "scrollbar_handle": "#4E5254",
                 "scrollbar_handle_hover": "#6E7274",
             }
+
+    def _sync_sources_to_data(self):
+        """Write current cell editor contents back into ``notebook_data``.
+
+        Keeps in-progress (unsaved) edits when the notebook is rebuilt.
+        """
+        if not self.notebook_data:
+            return
+        cells = self.notebook_data.get("cells", [])
+        for i, widget in enumerate(self.cell_widgets):
+            if isinstance(widget, NotebookCellWidget) and i < len(cells):
+                cells[i]["source"] = widget.get_source()
+
+    def refresh_theme(self):
+        """Reload the color scheme and rebuild the UI to apply it.
+
+        Rebuilds the whole panel because the palette is baked into each
+        widget's stylesheet at construction time. In-progress edits and
+        cell outputs are preserved across the rebuild.
+        """
+        # Capture current editor contents and live outputs before the old
+        # widgets are destroyed by the rebuild.
+        self._sync_sources_to_data()
+        outputs = [
+            widget._last_output if isinstance(widget, NotebookCellWidget) else None
+            for widget in self.cell_widgets
+        ]
+
+        # Reload colors from settings and rebuild the UI with the new palette.
+        # setWidget() detaches but does not delete the previous widget tree, so
+        # delete it explicitly to avoid leaking it on every theme change.
+        old_widget = self.widget()
+        # Pick up values written by the (separate) settings dock's QSettings.
+        self.settings.sync()
+        self._load_theme()
+        self._setup_ui()
+        if old_widget is not None:
+            old_widget.deleteLater()
+
+        # _setup_ui() shows the welcome screen; re-render the notebook if one
+        # is loaded and restore each cell's captured output.
+        if self.notebook_data and self.notebook_data.get("cells"):
+            self._render_notebook()
+            for widget, output in zip(self.cell_widgets, outputs):
+                if (
+                    output is not None
+                    and isinstance(widget, NotebookCellWidget)
+                    and widget.cell_type == "code"
+                ):
+                    widget.set_output(*output)
 
     def _update_cell_namespaces(self):
         """Update the namespace in all cell widgets for autocomplete."""

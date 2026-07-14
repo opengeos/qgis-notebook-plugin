@@ -5,7 +5,7 @@ This module provides a settings panel for configuring
 the notebook plugin options.
 """
 
-from qgis.PyQt.QtCore import Qt, QSettings
+from qgis.PyQt.QtCore import Qt, QSettings, pyqtSignal
 from qgis.PyQt.QtWidgets import (
     QDockWidget,
     QWidget,
@@ -28,6 +28,10 @@ from qgis.PyQt.QtGui import QFont
 
 class SettingsDockWidget(QDockWidget):
     """A settings panel for configuring notebook plugin options."""
+
+    # Emitted after settings are saved so open panels can re-apply them
+    # (e.g. the notebook dock reloading its color scheme).
+    settings_changed = pyqtSignal()
 
     # Settings keys
     SETTINGS_PREFIX = "QGISNotebook/"
@@ -536,6 +540,10 @@ class SettingsDockWidget(QDockWidget):
 
         self.status_label.setText("Settings saved")
         self.status_label.setStyleSheet("color: #6AAB73; font-size: 10px;")
+
+        # Notify listeners (e.g. the notebook dock) so changes such as the
+        # color scheme are applied immediately without reopening the panel.
+        self.settings_changed.emit()
 
         self.iface.messageBar().pushSuccess(
             "QGIS Notebook", "Settings saved successfully!"
