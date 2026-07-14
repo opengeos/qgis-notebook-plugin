@@ -325,6 +325,7 @@ class QGISNotebook:
                 self._settings_dock.visibilityChanged.connect(
                     self._on_settings_visibility_changed
                 )
+                self._settings_dock.settings_changed.connect(self._on_settings_changed)
                 self.iface.addDockWidget(
                     Qt.DockWidgetArea.RightDockWidgetArea, self._settings_dock
                 )
@@ -351,6 +352,11 @@ class QGISNotebook:
     def _on_settings_visibility_changed(self, visible):
         """Handle Settings dock visibility change."""
         self.settings_action.setChecked(visible)
+
+    def _on_settings_changed(self):
+        """Re-apply settings (e.g. color scheme) to the open notebook dock."""
+        if self._notebook_dock is not None:
+            self._notebook_dock.refresh_theme()
 
     def show_about(self):
         """Display the about dialog."""
