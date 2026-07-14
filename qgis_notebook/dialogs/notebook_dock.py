@@ -643,6 +643,10 @@ class NotebookCellWidget(QFrame):
     def _clear_cell_output(self):
         """Clear the output of this cell."""
         self._last_output = None
+        # Also drop the persisted outputs so they don't reappear when the cell
+        # is rebuilt (theme change) or the notebook is saved/reloaded.
+        if "outputs" in self.cell_data:
+            self.cell_data["outputs"] = []
         if self.cell_type == "code" and hasattr(self, "output_area"):
             self.output_area.clear()
             self.output_area.setVisible(False)
@@ -1656,6 +1660,8 @@ class NotebookDockWidget(QDockWidget):
         # is loaded and restore each cell's captured output.
         if self.notebook_data and self.notebook_data.get("cells"):
             self._render_notebook()
+            # _setup_ui() reset path_edit to its placeholder; restore the path.
+            self.path_edit.setText(self.notebook_path or "Untitled.ipynb")
             for widget, output in zip(self.cell_widgets, outputs):
                 if (
                     output is not None
@@ -2569,8 +2575,7 @@ class NotebookDockWidget(QDockWidget):
         """Clear all cell outputs."""
         for widget in self.cell_widgets:
             if isinstance(widget, NotebookCellWidget) and widget.cell_type == "code":
-                widget.output_area.clear()
-                widget.output_area.setVisible(False)
+                widget._clear_cell_output()
 
         self.status_bar.setText("Outputs cleared")
         self.status_bar.setStyleSheet(f"""
