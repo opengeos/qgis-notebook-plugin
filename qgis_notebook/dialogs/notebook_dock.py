@@ -653,8 +653,11 @@ class NotebookCellWidget(QFrame):
         self._last_output = None
         # Also drop the persisted outputs so they don't reappear when the cell
         # is rebuilt (theme change) or the notebook is saved/reloaded.
-        if "outputs" in self.cell_data:
+        if self.cell_data.get("outputs") or self.cell_data.get("execution_count"):
             self.cell_data["outputs"] = []
+            self.cell_data["execution_count"] = None
+            # Clearing changes what is saved, so mark the notebook dirty
+            self.content_changed.emit()
         if self.cell_type == "code" and hasattr(self, "output_area"):
             self.output_area.clear()
             self.output_area.setVisible(False)
@@ -1116,7 +1119,16 @@ class NotebookCellWidget(QFrame):
                     text = "".join(text)
                 # Escape so object reprs like "<QgsField: ...>" are not
                 # swallowed as HTML tags by the rich-text widget.
-                output_text.append(html.escape(text))
+                if output.get("name") == "stderr":
+                    output_text.append(
+                        (
+                            text,
+                            f"<span style='color:{self.colors['text_error']};'>"
+                            f"{html.escape(text)}</span>",
+                        )
+                    )
+                else:
+                    output_text.append((text, html.escape(text)))
 
             elif output_type in ("execute_result", "display_data"):
                 data = output.get("data", {})
@@ -1124,19 +1136,32 @@ class NotebookCellWidget(QFrame):
                     text = data["text/plain"]
                     if isinstance(text, list):
                         text = "".join(text)
-                    output_text.append(html.escape(text))
+                    output_text.append((text, html.escape(text)))
 
             elif output_type == "error":
                 ename = output.get("ename", "Error")
                 evalue = output.get("evalue", "")
+                text = f"{ename}: {evalue}"
                 output_text.append(
-                    f"<span style='color:{self.colors['text_error']};'>"
-                    f"{html.escape(f'{ename}: {evalue}')}</span>"
+                    (
+                        text,
+                        f"<span style='color:{self.colors['text_error']};'>"
+                        f"{html.escape(text)}</span>",
+                    )
                 )
 
         if output_text:
+            # <pre> keeps line breaks and indentation of multi-line output.
+            # Separate fragments with a newline only when the previous one
+            # does not already end with one, so streams are not padded with
+            # blank lines that were not in the original output.
+            parts = []
+            for i, (raw, rendered) in enumerate(output_text):
+                if i > 0 and not output_text[i - 1][0].endswith("\n"):
+                    parts.append("\n")
+                parts.append(rendered)
             self.output_area.clear()
-            self.output_area.setHtml("<br>".join(output_text))
+            self.output_area.setHtml("<pre>" + "".join(parts).rstrip("\n") + "</pre>")
             self.output_area.setVisible(True)
             # Adjust height based on content (extra space for horizontal scrollbar)
             doc_height = self.output_area.document().size().height()
@@ -1342,6 +1367,8 @@ class NotebookDockWidget(QDockWidget):
 
     def _setup_namespace(self):
         """Set up the Python namespace with common modules."""
+        # A fresh namespace is a fresh "kernel", so restart execution counts.
+        self._execution_count = 0
         # Import QGIS modules and iface
         try:
             import qgis.core
@@ -2488,6 +2515,61 @@ class NotebookDockWidget(QDockWidget):
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
+    @staticmethod
+    def _to_nb_lines(text):
+        """Split text into the list-of-lines form used by nbformat.
+
+        Args:
+            text: The text to split.
+
+        Returns:
+            list: Lines with trailing newlines preserved.
+        """
+        return text.splitlines(keepends=True)
+
+    def _build_nb_outputs(self, result, stdout, stderr, execution_count):
+        """Convert an execution result into nbformat v4 output dicts.
+
+        Outputs are ordered stdout, result, stderr to match how ``set_output``
+        displays them during a live run.
+
+        Args:
+            result: The value of the evaluated expression, or None.
+            stdout: Captured standard output.
+            stderr: Captured standard error (including tracebacks).
+            execution_count: The execution count for the cell.
+
+        Returns:
+            list: A list of nbformat output dictionaries.
+        """
+        outputs = []
+        if stdout:
+            outputs.append(
+                {
+                    "output_type": "stream",
+                    "name": "stdout",
+                    "text": self._to_nb_lines(stdout),
+                }
+            )
+        if result is not None:
+            outputs.append(
+                {
+                    "output_type": "execute_result",
+                    "execution_count": execution_count,
+                    "data": {"text/plain": self._to_nb_lines(repr(result))},
+                    "metadata": {},
+                }
+            )
+        if stderr:
+            outputs.append(
+                {
+                    "output_type": "stream",
+                    "name": "stderr",
+                    "text": self._to_nb_lines(stderr),
+                }
+            )
+        return outputs
+
     def _execute_cell(self, cell_index):
         """Execute a specific cell synchronously."""
         if cell_index >= len(self.cell_widgets):
@@ -2516,6 +2598,14 @@ class NotebookDockWidget(QDockWidget):
         # Update cell output
         cell_widget.set_running(False)
         cell_widget.set_output(result, stdout, stderr)
+
+        # Persist the output in the notebook data so it is written on save
+        self._execution_count += 1
+        cell_widget.cell_data["execution_count"] = self._execution_count
+        cell_widget.cell_data["outputs"] = self._build_nb_outputs(
+            result, stdout, stderr, self._execution_count
+        )
+        self._mark_dirty()
 
         # Update namespace for all cells (for autocomplete with newly defined variables)
         self._update_cell_namespaces()
