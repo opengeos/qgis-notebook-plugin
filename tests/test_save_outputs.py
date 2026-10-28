@@ -98,3 +98,39 @@ def test_outputs_saved_and_reloaded(app, tmp_path):
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert all(c["outputs"] == [] for c in saved["cells"])
     assert all(c["execution_count"] is None for c in saved["cells"])
+
+
+def test_reloaded_output_matches_live_output(app, tmp_path):
+    """Reloaded outputs keep live order and add no extra blank lines."""
+    from qgis_notebook.dialogs.notebook_dock import NotebookDockWidget
+
+    dock = NotebookDockWidget(iface=None)
+    path = tmp_path / "nb.ipynb"
+    code = "(print('hello'), print('oops', file=__import__('sys').stderr), 2)[2]"
+    _load_notebook(dock, path, [_code_cell(code)])
+    dock._execute_cell(0)
+    live = dock.cell_widgets[0].output_area.toPlainText()
+    dock._save_to_path(str(path))
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    kinds = [o.get("name", o["output_type"]) for o in saved["cells"][0]["outputs"]]
+    assert kinds == ["stdout", "execute_result", "stderr"]
+
+    dock._load_notebook(str(path))
+    reloaded = dock.cell_widgets[0].output_area.toPlainText()
+    assert reloaded.strip() == live.strip() == "hello\n2\noops"
+
+
+def test_clearing_outputs_marks_dirty(app, tmp_path):
+    """Clearing saved outputs is an unsaved change."""
+    from qgis_notebook.dialogs.notebook_dock import NotebookDockWidget
+
+    dock = NotebookDockWidget(iface=None)
+    path = tmp_path / "nb.ipynb"
+    _load_notebook(dock, path, [_code_cell("1 + 1")])
+    dock._execute_cell(0)
+    dock._save_to_path(str(path))
+    assert not dock._is_dirty
+
+    dock._clear_outputs()
+    assert dock._is_dirty

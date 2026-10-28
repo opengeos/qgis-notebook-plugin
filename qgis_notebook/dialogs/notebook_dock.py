@@ -653,9 +653,11 @@ class NotebookCellWidget(QFrame):
         self._last_output = None
         # Also drop the persisted outputs so they don't reappear when the cell
         # is rebuilt (theme change) or the notebook is saved/reloaded.
-        if "outputs" in self.cell_data:
+        if self.cell_data.get("outputs") or self.cell_data.get("execution_count"):
             self.cell_data["outputs"] = []
             self.cell_data["execution_count"] = None
+            # Clearing changes what is saved, so mark the notebook dirty
+            self.content_changed.emit()
         if self.cell_type == "code" and hasattr(self, "output_area"):
             self.output_area.clear()
             self.output_area.setVisible(False)
@@ -1119,11 +1121,14 @@ class NotebookCellWidget(QFrame):
                 # swallowed as HTML tags by the rich-text widget.
                 if output.get("name") == "stderr":
                     output_text.append(
-                        f"<span style='color:{self.colors['text_error']};'>"
-                        f"{html.escape(text)}</span>"
+                        (
+                            text,
+                            f"<span style='color:{self.colors['text_error']};'>"
+                            f"{html.escape(text)}</span>",
+                        )
                     )
                 else:
-                    output_text.append(html.escape(text))
+                    output_text.append((text, html.escape(text)))
 
             elif output_type in ("execute_result", "display_data"):
                 data = output.get("data", {})
@@ -1131,20 +1136,32 @@ class NotebookCellWidget(QFrame):
                     text = data["text/plain"]
                     if isinstance(text, list):
                         text = "".join(text)
-                    output_text.append(html.escape(text))
+                    output_text.append((text, html.escape(text)))
 
             elif output_type == "error":
                 ename = output.get("ename", "Error")
                 evalue = output.get("evalue", "")
+                text = f"{ename}: {evalue}"
                 output_text.append(
-                    f"<span style='color:{self.colors['text_error']};'>"
-                    f"{html.escape(f'{ename}: {evalue}')}</span>"
+                    (
+                        text,
+                        f"<span style='color:{self.colors['text_error']};'>"
+                        f"{html.escape(text)}</span>",
+                    )
                 )
 
         if output_text:
+            # <pre> keeps line breaks and indentation of multi-line output.
+            # Separate fragments with a newline only when the previous one
+            # does not already end with one, so streams are not padded with
+            # blank lines that were not in the original output.
+            parts = []
+            for i, (raw, rendered) in enumerate(output_text):
+                if i > 0 and not output_text[i - 1][0].endswith("\n"):
+                    parts.append("\n")
+                parts.append(rendered)
             self.output_area.clear()
-            # <pre> keeps line breaks and indentation of multi-line output
-            self.output_area.setHtml("<pre>" + "<br>".join(output_text) + "</pre>")
+            self.output_area.setHtml("<pre>" + "".join(parts).rstrip("\n") + "</pre>")
             self.output_area.setVisible(True)
             # Adjust height based on content (extra space for horizontal scrollbar)
             doc_height = self.output_area.document().size().height()
@@ -2513,6 +2530,9 @@ class NotebookDockWidget(QDockWidget):
     def _build_nb_outputs(self, result, stdout, stderr, execution_count):
         """Convert an execution result into nbformat v4 output dicts.
 
+        Outputs are ordered stdout, result, stderr to match how ``set_output``
+        displays them during a live run.
+
         Args:
             result: The value of the evaluated expression, or None.
             stdout: Captured standard output.
@@ -2531,14 +2551,6 @@ class NotebookDockWidget(QDockWidget):
                     "text": self._to_nb_lines(stdout),
                 }
             )
-        if stderr:
-            outputs.append(
-                {
-                    "output_type": "stream",
-                    "name": "stderr",
-                    "text": self._to_nb_lines(stderr),
-                }
-            )
         if result is not None:
             outputs.append(
                 {
@@ -2546,6 +2558,14 @@ class NotebookDockWidget(QDockWidget):
                     "execution_count": execution_count,
                     "data": {"text/plain": self._to_nb_lines(repr(result))},
                     "metadata": {},
+                }
+            )
+        if stderr:
+            outputs.append(
+                {
+                    "output_type": "stream",
+                    "name": "stderr",
+                    "text": self._to_nb_lines(stderr),
                 }
             )
         return outputs
