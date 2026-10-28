@@ -3,7 +3,7 @@ name=Notebook
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Render and run Jupyter notebooks within QGIS in a dockable panel.
-version=0.8.0
+version=0.8.1
 author=Qiusheng Wu
 email=giswqs@gmail.com
 
@@ -36,6 +36,9 @@ experimental=False
 deprecated=False
 
 changelog=
+    0.8.1
+        - Save cell outputs and execution counts to the .ipynb file (#57)
+        - Keep line breaks and stderr coloring when reopening saved outputs (#57)
     0.8.0
         - Add JupyterLab-style command mode: Escape leaves edit mode, Enter
           re-enters it, and Up/Down move the cell selection (#52)
