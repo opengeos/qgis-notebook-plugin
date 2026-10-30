@@ -374,6 +374,87 @@ class CodeEditor(QPlainTextEdit):
         super().focusOutEvent(event)
         self.focus_changed.emit(False)
 
+    @staticmethod
+    def _is_toggle_comment_key(event):
+        """Check whether a key event is the toggle-comment shortcut.
+
+        Shift is allowed because some keyboard layouts need it to type "/".
+        Alt is not, because AltGr is reported as Ctrl+Alt on Windows.
+
+        Args:
+            event: The key event to check.
+
+        Returns:
+            bool: True if the event is Ctrl+/.
+        """
+        modifiers = event.modifiers()
+        return bool(
+            event.key() == Qt.Key.Key_Slash
+            and modifiers & Qt.KeyboardModifier.ControlModifier
+            and not modifiers & Qt.KeyboardModifier.AltModifier
+        )
+
+    def event(self, event):
+        """Claim Ctrl+/ before a QGIS window-level shortcut can take it.
+
+        Args:
+            event: The event being delivered to the editor.
+
+        Returns:
+            bool: True if the event was handled, False otherwise.
+        """
+        if event.type() == QEvent.Type.ShortcutOverride:
+            if self._is_toggle_comment_key(event):
+                event.accept()
+                return True
+        return super().event(event)
+
+    def _toggle_comment(self):
+        """Comment or uncomment the current line or all selected lines.
+
+        Lines are uncommented only if every non-blank line is already a
+        comment. Otherwise "# " is added at the smallest indentation. Blank
+        lines are skipped unless nothing else is selected. The change is a
+        single undo step.
+        """
+        cursor = self.textCursor()
+        document = self.document()
+        block = document.findBlock(cursor.selectionStart())
+        end_block = document.findBlock(cursor.selectionEnd())
+        # A selection ending at column 0 does not include that last line
+        if (
+            cursor.hasSelection()
+            and cursor.selectionEnd() == end_block.position()
+            and end_block != block
+        ):
+            end_block = end_block.previous()
+
+        blocks = [block]
+        while blocks[-1] != end_block:
+            blocks.append(blocks[-1].next())
+
+        targets = [b for b in blocks if b.text().strip()] or blocks
+        uncomment = all(b.text().lstrip().startswith("#") for b in targets)
+        indent = min(len(b.text()) - len(b.text().lstrip()) for b in targets)
+
+        edit = QTextCursor(document)
+        edit.beginEditBlock()
+        for target in targets:
+            text = target.text()
+            if uncomment:
+                column = len(text) - len(text.lstrip())
+                length = 2 if text[column:].startswith("# ") else 1
+                edit.setPosition(target.position() + column)
+                edit.setPosition(
+                    target.position() + column + length,
+                    QTextCursor.MoveMode.KeepAnchor,
+                )
+                edit.removeSelectedText()
+            else:
+                edit.setPosition(target.position() + indent)
+                edit.insertText("# ")
+        edit.endEditBlock()
+
     def keyPressEvent(self, event):
         """Handle key press events."""
         # If completer popup is visible, handle its keys
@@ -437,6 +518,12 @@ class CodeEditor(QPlainTextEdit):
             and event.modifiers() == Qt.KeyboardModifier.ControlModifier
         ):
             self._show_completions()
+            return
+
+        # Ctrl+/: Toggle comment on the current line or selected lines
+        if self._is_toggle_comment_key(event):
+            self.completer.popup().hide()
+            self._toggle_comment()
             return
 
         super().keyPressEvent(event)
@@ -1029,12 +1116,46 @@ class NotebookCellWidget(QFrame):
         # mode, matching Jupyter's behavior.
         self.command_mode_requested.emit(self.cell_index)
 
+    @staticmethod
+    def _convert_thematic_breaks(text):
+        """Convert markdown thematic break lines to <hr> tags.
+
+        Dashes directly under a paragraph line make that line a heading
+        instead, as they do in Jupyter and Colab.
+
+        Args:
+            text: The markdown source.
+
+        Returns:
+            str: The markdown with thematic breaks replaced.
+        """
+        import re
+
+        lines = []
+        for line in text.split("\n"):
+            if not re.match(r"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$", line):
+                lines.append(line)
+            elif (
+                lines
+                and lines[-1].strip()
+                and set(line.strip()) == {"-"}
+                and not re.match(
+                    r"^\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s|>|<(?:br|hr)\b)", lines[-1]
+                )
+            ):
+                lines[-1] = f"## {lines[-1].strip()}"
+            else:
+                lines.append("<hr>")
+        return "\n".join(lines)
+
     def _markdown_to_html(self, text):
         """Convert markdown to simple HTML."""
         import re
 
         if not text.strip():
             return f"<i style='color:{self.colors['text_tertiary']};'>Double-click to edit markdown...</i>"
+
+        text = self._convert_thematic_breaks(text)
 
         # Headers - use margin:0 to avoid extra spacing
         text = re.sub(
@@ -1100,6 +1221,9 @@ class NotebookCellWidget(QFrame):
 
         # Remove newlines after closing heading tags (they add extra space)
         text = re.sub(r"(</h[1-6]>)\n+", r"\1", text)
+
+        # Same for <hr>, which is also a block and starts on its own line
+        text = re.sub(r"\n*<hr>\n*", "<hr>", text)
 
         # Convert remaining line breaks
         text = text.replace("\n\n", "<br><br>")
@@ -1776,10 +1900,6 @@ class NotebookDockWidget(QDockWidget):
             bg_color = self.colors["bg_button_danger"]
             hover_color = self.colors["bg_button_danger_hover"]
             text_color = "#FFFFFF"  # Always white for colored buttons
-        elif button_type == "warning":
-            bg_color = "#E8A838"  # Amber/orange
-            hover_color = "#D4922E"  # Darker amber
-            text_color = "#FFFFFF"
         else:  # normal
             bg_color = self.colors["bg_button"]
             hover_color = self.colors["bg_button_hover"]
@@ -1853,7 +1973,7 @@ class NotebookDockWidget(QDockWidget):
         toolbar_layout.addWidget(self.new_btn)
 
         # Restart session button
-        self.restart_btn = self._create_toolbar_button("Restart", "warning")
+        self.restart_btn = self._create_toolbar_button("Restart", "normal")
         self.restart_btn.clicked.connect(self._restart_session)
         toolbar_layout.addWidget(self.restart_btn)
 
@@ -2078,6 +2198,7 @@ class NotebookDockWidget(QDockWidget):
                     Shift+Enter: Run and move to next<br>
                     Alt+Enter: Run and create new cell<br>
                     Ctrl+Space: Autocomplete<br>
+                    Ctrl+/: Comment or uncomment lines<br>
                     Type "." after object: Show methods/attributes<br>
                     Esc: Finish markdown edit<br>
                     Right-click: Cell menu
