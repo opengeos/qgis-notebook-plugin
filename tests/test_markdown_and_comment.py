@@ -121,9 +121,7 @@ def test_toggle_selection_uses_smallest_indent(editor):
     editor.setPlainText(source)
     _select(editor, source.index("    a"), source.index("c = 3"))
     _press_toggle(editor)
-    assert editor.toPlainText() == (
-        "if x:\n    # a = 1\n\n    #     b = 2\nc = 3"
-    )
+    assert editor.toPlainText() == ("if x:\n    # a = 1\n\n    #     b = 2\nc = 3")
     _press_toggle(editor)
     assert editor.toPlainText() == source
 
