@@ -150,6 +150,7 @@ The plugin supports JupyterLab-style keyboard shortcuts for efficient notebook e
 | `Shift+Enter` | Execute cell and move to next |
 | `Alt+Enter` | Execute cell and insert new cell below |
 | `Ctrl+Space` | Trigger autocomplete |
+| `Ctrl+/` | Comment or uncomment the current or selected lines (code cells) |
 
 #### Command Mode (cell selected, not editing)
 
