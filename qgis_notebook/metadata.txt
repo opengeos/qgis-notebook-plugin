@@ -3,7 +3,7 @@ name=Notebook
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Render and run Jupyter notebooks within QGIS in a dockable panel.
-version=0.8.1
+version=0.8.2
 author=Qiusheng Wu
 email=giswqs@gmail.com
 
@@ -36,6 +36,11 @@ experimental=False
 deprecated=False
 
 changelog=
+    0.8.2
+        - Add a Ctrl+/ shortcut to comment or uncomment lines in code cells (#59)
+        - Render ---, *** and ___ in markdown cells as horizontal rules, and
+          dashes directly under a text line as a heading (#59)
+        - Make the Restart button neutral instead of bright orange (#59)
     0.8.1
         - Save cell outputs and execution counts to the .ipynb file (#57)
         - Keep line breaks and stderr coloring when reopening saved outputs (#57)
